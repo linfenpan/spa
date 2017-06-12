@@ -1,0 +1,14 @@
+.pageIndex { padding-bottom: 20px; }
+
+#banner { width: 100%; }
+#banner a { display: block; }
+#banner .image { width: 100%; vertical-align: bottom; }
+
+#quikList { margin-top: 8px; font-size: 0; text-align: center; background: #fff; }
+#quikList li { display: inline-block; font-size: 14px; width: 150px; padding: 10px; }
+#quikList li .icon { display: block; margin: 0 auto; width: 60px; height: 60px; background: #ddd; border-radius: 50%; }
+#quikList li .text { display: block; padding-top: 5px; }
+#quikList .empty { padding: 0; margin-top: 0; margin-bottom: 0; }
+
+
+#notification { margin-top: 8px; padding: 5px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; background: #fff; }

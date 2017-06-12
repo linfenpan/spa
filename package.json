@@ -1,0 +1,31 @@
+{
+  "name": "spa",
+  "version": "0.0.1",
+  "description": "single page application",
+  "main": "dist/jquery-pjax.min.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/linfenpan/spa.git"
+  },
+  "keywords": [
+    "spa"
+  ],
+  "author": "da宗熊",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/linfenpan/spa/issues"
+  },
+  "homepage": "https://github.com/linfenpan/spa#readme",
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-concat": "^2.6.1",
+    "gulp-footer": "^1.0.5",
+    "gulp-header": "^1.8.8",
+    "gulp-rename": "^1.2.2",
+    "gulp-uglify": "^3.0.0",
+    "lazypipe": "^1.0.1"
+  }
+}
