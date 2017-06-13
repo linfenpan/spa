@@ -165,13 +165,16 @@ $.pjax 请求 ```page/list.html``` 时，将会把 ```<div><ul>...</ul></div>```
 2. pjax:complete 请求完成
 3. pjax:success 请求完成
 4. pjax:failure 请求失败
-5. pjax:render 新页面的脚本资源已经加载完毕，dom元素开始渲染，第一个参数为当前要显示的元素
-6. dom:ready 某个 dom 元素，所有资源已经准备完毕，开始渲染
+5. pjax:render 某个 dom 元素，所有脚本已经加载完毕，并且 dom 元素已经显示
+6. dom:ready 某个 dom 元素，所有脚本已经加载完毕，并且 dom 元素已经显示
 7. dom:beforeshow 某个 dom 元素，显示之前
 8. dom:beforehide 某个 dom 元素，隐藏之前
 9. dom:show 某个 dom 元素，显示
 10. dom:hide 某个 dom 元素，隐藏
 11. dom:destroy 某个 dom 元素，销毁
+
+事件执行顺序如下:
+pjax:request -> pjax:complete -> pjax:success|pjax:failure -> dom:beforeshow -> dom:beforehide -> dom:show -> dom:hide -> pjax:render -> dom:ready
 
 
 ## 动画钩子类
@@ -180,13 +183,13 @@ $.pjax 请求 ```page/list.html``` 时，将会把 ```<div><ul>...</ul></div>```
 
 切换时，会进入以下流程:
 ```javascript
-$hide.addClass('pjax-before-hide pjax-[action]-before-hide');
-$show.addClass('pjax-before-show pjax-[action]-before-show');
-$hide.addClass('pjax-hide pjax-[action]-hide');
-$show.addClass('pjax-show pjax-[action]-show');
+$hide.addClass('pjax-before-hide [key]-[action]-before-hide [key]-before-hide');
+$show.addClass('pjax-before-show [key]-[action]-before-show [key]-before-show');
+$hide.addClass('pjax-hide [key]-[action]-hide [key]-hide');
+$show.addClass('pjax-show [key]-[action]-show [key]-show');
 ```
 
-其中，action 有: replace/push/back/forward，可以按照上述流程，灵活编写动画
+其中，key 为 $.pjax 中传入的参数，action 有: replace/push/back/forward，可以按照上述流程，灵活编写动画
 
 
 # 测试

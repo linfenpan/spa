@@ -13,10 +13,10 @@ StateClsCtrl.prototype = {
     var key = this.key;
     var prefix = key + '-' + action;
     return {
-      beforeShow: prefix + '-before-show ' + key + '-before-show',
-      show: prefix + '-show ' + key + '-show',
-      beforeHide: prefix + '-before-hide ' + key + '-before-hide',
-      hide: prefix + '-hide ' + key + '-hide'
+      beforeShow: prefix + '-before-show ' + key + '-before-show pjax-before-show',
+      show: prefix + '-show ' + key + '-show pjax-show',
+      beforeHide: prefix + '-before-hide ' + key + '-before-hide pjax-before-hide',
+      hide: prefix + '-hide ' + key + '-hide pjax-hide'
     };
   },
 

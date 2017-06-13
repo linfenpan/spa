@@ -310,11 +310,17 @@ Pjax.prototype = $.extend({
       var $show = result.$dom;
       var $hide = ctx.$root.find('[' + ctx.keyCurrent + ']');
 
+      var defScript = $.Deferred(), defAnimate = $.Deferred();
+
       resourceCtrl.addScripts(result.scripts, function() {
+        defScript.resolve();
+      });
+      resourceCtrl.addLinks(result.links);
+
+      $.when(defScript, defAnimate).always(function() {
         ctx.fire(EVENT_PJAX_RENDER, [$show]);
         ctx.fire('dom:ready', [$show]);
       });
-      resourceCtrl.addLinks(result.links);
 
       ctx.fire('dom:beforeshow', [$show]);
       ctx.fire('dom:beforehide', [$hide]);
@@ -325,6 +331,8 @@ Pjax.prototype = $.extend({
 
         ctx.fire('dom:show', [$show]);
         ctx.fire('dom:hide', [$hide]);
+
+        defAnimate.resolve();
 
         callback && callback($hide, $show);
       });
