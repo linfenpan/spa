@@ -16,10 +16,6 @@
 // });
 
 var pjax = $.pjax($('body'));
-// pjax.load('/page/list.html');
-// pjax.one('pjax:success', function() {
-//     console.log('加载完毕');
-//   });
 
 $('#btmBar').on('click', 'a', function() {
   pjax.push(this);
@@ -69,4 +65,7 @@ pjax.on('dom:hide', function($dom) {
 pjax.on('dom:destroy', function($dom) {
   info('dom:destroy，当前元素:');
   console.log($dom);
+});
+pjax.on('pjax:parseerror', function(url, html) {
+  console.error('页面解析失败');
 });

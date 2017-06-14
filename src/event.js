@@ -12,7 +12,7 @@ Event.prototype = {
       var args = toArray(arguments);
       // 删掉第一个参数：event
       args.shift();
-      return fn.apply(this, args);
+      return fn.apply(ctx, args);
     };
     ctx._[isOne ? 'one' : 'on'](evt, newFn);
     return ctx;

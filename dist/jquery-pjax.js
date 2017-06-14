@@ -1,8 +1,8 @@
 /**
   @rely: jQuery
   @author: da宗熊
-  @version: 0.0.1
-  @lastModify: 2017/6/13
+  @version: 0.0.2
+  @lastModify: 2017/6/14
   @git: https://github.com/linfenpan/spa#readme
 */
 !function(e, t) {
@@ -94,7 +94,7 @@
     on: function(e, t, r) {
       var n = this, i = t._e_on_fn_ || function() {
         var e = toArray(arguments);
-        return e.shift(), t.apply(this, e);
+        return e.shift(), t.apply(n, e);
       };
       return n._[r ? "one" : "on"](e, i), n;
     },
@@ -314,7 +314,7 @@
           var n = r.to.url, i = r.isBack ? "back" : "forward", o = e.$root.find("[" + e.keyId + "=" + r.to.id + "]");
           o.length > 0 ? e._addContent({
             $dom: o
-          }, i) : e.load(n, i, !0);
+          }, i) : e._load(n, i, !0);
         }
       });
     },
@@ -325,15 +325,15 @@
       history.forward();
     },
     push: function(t) {
-      e ? this.load(t, "push") : location.href = t;
+      e ? this._load(t, "push") : location.href = t;
     },
     replace: function(t) {
-      e ? this.load(t, "replace") : location.replace(t);
+      e ? this._load(t, "replace") : location.replace(t);
     },
     reload: function(t) {
-      e ? this.load(t || location.href, "replace", !0) : location.reload();
+      e ? this._load(t || location.href, "replace", !0) : location.reload();
     },
-    load: function(e, t, r) {
+    _load: function(e, t, r) {
       var n = this;
       "object" === queryType(e) && (e = e.href || "");
       var i = toAbsUrl(e);
@@ -351,6 +351,7 @@
       n.lockAjax = !0;
       try {
         var i = n._analysisiHtml(r, e);
+        if (!i.$dom || i.$dom.length <= 0) return n.lockAjax = !1, void n.fire("pjax:parseerror", [ e, r ]);
         n._addContent(i, t, function(r, i) {
           switch (n.lockAjax = !1, t) {
            case "push":
@@ -368,7 +369,7 @@
     _analysisiHtml: function(e, t) {
       var r = this, n = document.head || document.getElementsByTagName("head")[0], i = e.match(/<body[^>]*>([\s\S.]*)<\/body>/), o = e.match(/<head[^>]*>([\s\S.]*)<\/head>/), a = [], s = [], c = null, u = null, f = null;
       i && (u = $("<div>" + i[1] + "</div>")), o && (f = $("<div>" + o[1] + "</head>"));
-      var d = "link[" + r.keyIgnore + "],style[" + r.keyIgnore + "],script[" + r.keyIgnore + "]", h = function(e, n) {
+      var d = "link[" + r.keyIgnore + "],style[" + r.keyIgnore + "],script[" + r.keyIgnore + "]", l = function(e, n) {
         var i = e.getAttribute(r.keyResource);
         return e.href ? e.setAttribute("href", toAbsUrl(e.getAttribute("href"), t)) : e.src && e.setAttribute("src", toAbsUrl(e.getAttribute("src"), t)), 
         {
@@ -379,13 +380,13 @@
       };
       return f && (u.find(d).remove(), f.find("style,link,script").each(function(e, t) {
         var r = s;
-        "script" === t.tagName.toLowerCase() && (r = a), r.push(h(t, n));
+        "script" === t.tagName.toLowerCase() && (r = a), r.push(l(t, n));
       })), u && (u.find(d).remove(), c = u.find("[" + r.keyContainer + "]"), u.find("script").map(function(e, t) {
         $(t);
         c.find(t).length > 0 ? (t.setAttribute(r.keyResource, t.getAttribute(r.keyResource) || 1), 
-        a.push(h(t, c[0]))) : t.hasAttribute(r.keyResource) && t.push(h(t, n));
+        a.push(l(t, c[0]))) : t.hasAttribute(r.keyResource) && t.push(l(t, n));
       }), c.find("script").remove(), c.remove(), u.find("style,link").each(function(e, t) {
-        t.hasAttribute(r.keyResource) && script.push(h(t, n));
+        t.hasAttribute(r.keyResource) && script.push(l(t, n));
       })), {
         scripts: a,
         links: s,

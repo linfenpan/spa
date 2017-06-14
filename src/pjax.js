@@ -4,6 +4,8 @@ var EVENT_PJAX_COMPLETE = 'pjax:complete';
 var EVENT_PJAX_SUCCESS = 'pjax:success';
 var EVENT_PJAX_RENDER = 'pjax:render';
 var EVENT_PJAX_FAILURE = 'pjax:failure';
+// 结构解析出错，应该检查 ajax 返回的内容，是否合法
+var EVENT_PARSE_ERROR = 'pjax:parseerror';
 
 function Pjax($root, opts) {
   var ctx = this;
@@ -95,7 +97,7 @@ Pjax.prototype = $.extend({
       if ($dom.length > 0) {
         ctx._addContent({ $dom: $dom }, mode);
       } else {
-        ctx.load(url, mode, true);
+        ctx._load(url, mode, true);
       }
     });
 
@@ -131,7 +133,7 @@ Pjax.prototype = $.extend({
 
   push: function(url) {
     if (isSupport) {
-      this.load(url, 'push');
+      this._load(url, 'push');
     } else {
       location.href = url;
     }
@@ -139,7 +141,7 @@ Pjax.prototype = $.extend({
 
   replace: function(url) {
     if (isSupport) {
-      this.load(url, 'replace');
+      this._load(url, 'replace');
     } else {
       location.replace(url);
     }
@@ -147,13 +149,13 @@ Pjax.prototype = $.extend({
 
   reload: function(url) {
     if (isSupport) {
-      this.load(url || location.href, 'replace', true);
+      this._load(url || location.href, 'replace', true);
     } else {
       location.reload();
     }
   },
 
-  load: function(absUrl, addMode, forceUpdate) {
+  _load: function(absUrl, addMode, forceUpdate) {
     var ctx = this;
     if (queryType(absUrl) === 'object') {
       absUrl = absUrl.href || '';
@@ -189,6 +191,11 @@ Pjax.prototype = $.extend({
     ctx.lockAjax = true;
     try {
       var result = ctx._analysisiHtml(html, url);
+      if (!result.$dom || result.$dom.length <= 0) {
+        ctx.lockAjax = false;
+        ctx.fire(EVENT_PARSE_ERROR, [url, html]);
+        return;
+      }
       ctx._addContent(result, addMode, function($old, $now) {
         ctx.lockAjax = false;
         switch (addMode) {

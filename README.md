@@ -162,16 +162,17 @@ $.pjax 请求 ```page/list.html``` 时，将会把 ```<div><ul>...</ul></div>```
 ## 事件
 
 1. pjax:request 请求新页面
-2. pjax:complete 请求完成
-3. pjax:success 请求完成
-4. pjax:failure 请求失败
-5. pjax:render 某个 dom 元素，所有脚本已经加载完毕，并且 dom 元素已经显示
-6. dom:ready 某个 dom 元素，所有脚本已经加载完毕，并且 dom 元素已经显示
-7. dom:beforeshow 某个 dom 元素，显示之前
-8. dom:beforehide 某个 dom 元素，隐藏之前
-9. dom:show 某个 dom 元素，显示
-10. dom:hide 某个 dom 元素，隐藏
-11. dom:destroy 某个 dom 元素，销毁
+- pjax:complete 请求完成
+- pjax:success 请求完成
+- pjax:failure 请求失败
+- pjax:parseerror ajax返回的内容，结构解析失败，产生此错误，会中断 dom 事件
+- pjax:render 某个 dom 元素，所有脚本已经加载完毕，并且 dom 元素已经显示
+- dom:ready 某个 dom 元素，所有脚本已经加载完毕，并且 dom 元素已经显示
+- dom:beforeshow 某个 dom 元素，显示之前
+- dom:beforehide 某个 dom 元素，隐藏之前
+- dom:show 某个 dom 元素，显示
+- dom:hide 某个 dom 元素，隐藏
+- dom:destroy 某个 dom 元素，销毁
 
 事件执行顺序如下:
 pjax:request -> pjax:complete -> pjax:success|pjax:failure -> dom:beforeshow -> dom:beforehide -> dom:show -> dom:hide -> pjax:render -> dom:ready
