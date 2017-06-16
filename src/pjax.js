@@ -216,6 +216,7 @@ Pjax.prototype = $.extend({
       });
     } catch (e) {
       ctx.lockAjax = false;
+      ctx.fire(EVENT_PARSE_ERROR, [url, html]);
     }
   },
 
@@ -289,7 +290,7 @@ Pjax.prototype = $.extend({
         } else {
           // 非 $dom 的元素，默认是 data-pjax-ignore 的，如果没有 data-pjax-res 标志，忽略它们
           if (script.hasAttribute(ctx.keyResource)) {
-            script.push(toConfItem(script, elHead));
+            scripts.push(toConfItem(script, elHead));
           }
         }
       });
@@ -301,7 +302,7 @@ Pjax.prototype = $.extend({
       $body.find('style,link').each(function(i, link) {
         // 如果没有 data-pjax-res 标志，则忽略之
         if (link.hasAttribute(ctx.keyResource)) {
-          script.push(toConfItem(link, elHead));
+          links.push(toConfItem(link, elHead));
         }
       });
     }

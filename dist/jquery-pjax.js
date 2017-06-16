@@ -2,7 +2,7 @@
   @rely: jQuery
   @author: da宗熊
   @version: 0.0.2
-  @lastModify: 2017/6/14
+  @lastModify: 2017/6/16
   @git: https://github.com/linfenpan/spa#readme
 */
 !function(e, t) {
@@ -362,8 +362,8 @@
             n.history.replace(e), n.fire("dom:destroy", [ r ]), r.remove(), n._setDomIdByConf(i, n.history.current);
           }
         });
-      } catch (e) {
-        n.lockAjax = !1;
+      } catch (t) {
+        n.lockAjax = !1, n.fire("pjax:parseerror", [ e, r ]);
       }
     },
     _analysisiHtml: function(e, t) {
@@ -384,9 +384,9 @@
       })), u && (u.find(d).remove(), c = u.find("[" + r.keyContainer + "]"), u.find("script").map(function(e, t) {
         $(t);
         c.find(t).length > 0 ? (t.setAttribute(r.keyResource, t.getAttribute(r.keyResource) || 1), 
-        a.push(l(t, c[0]))) : t.hasAttribute(r.keyResource) && t.push(l(t, n));
+        a.push(l(t, c[0]))) : t.hasAttribute(r.keyResource) && a.push(l(t, n));
       }), c.find("script").remove(), c.remove(), u.find("style,link").each(function(e, t) {
-        t.hasAttribute(r.keyResource) && script.push(l(t, n));
+        t.hasAttribute(r.keyResource) && s.push(l(t, n));
       })), {
         scripts: a,
         links: s,
