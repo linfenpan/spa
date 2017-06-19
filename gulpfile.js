@@ -33,7 +33,7 @@ const textHeader = `
 const textFooter = `return Pjax; \n});`;
 
 gulp.task('build', [], () => {
-  gulp.src(['./src/common.js', './src/path.js', './src/event.js', './src/resource.js', './src/state.js', './src/state-cls-ctrl.js', './src/pjax.js'])
+  gulp.src(['./src/common.js', './src/path.js', './src/event.js', './src/resource.js', './src/state.js', './src/state-cls-ctrl.js', './src/runner.js', './src/pjax.js'])
     .pipe(concat('jquery-pjax.js'))
     .pipe(header(textHeader))
     .pipe(footer(textFooter))

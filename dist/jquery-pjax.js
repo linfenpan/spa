@@ -1,8 +1,8 @@
 /**
   @rely: jQuery
   @author: da宗熊
-  @version: 0.0.2
-  @lastModify: 2017/6/16
+  @version: 0.0.3
+  @lastModify: 2017/6/19
   @git: https://github.com/linfenpan/spa#readme
 */
 !function(e, t) {
@@ -39,6 +39,10 @@
   function StateClsCtrl(e, t) {
     this.key = e, this.waitTime = t || 300, this.isRunning = !1, this.runTimer = null, 
     this.prevFn = null;
+  }
+  function Runner(e) {
+    var t = this;
+    t.map = {}, t.split = e || "-", t.args = [];
   }
   function Pjax(t, n) {
     var i = this;
@@ -275,6 +279,21 @@
         i.isRunning = !1, t.addClass(o.hide), r.addClass(o.show), n && n();
       }, i.isRunning = !0, i.runTimer = setTimeout(i.prevFn, i.waitTime);
     }
+  }, Runner.prototype = {
+    params: function() {
+      return this.args = toArray(arguments), this;
+    },
+    add: function() {
+      var e = toArray(arguments), t = e.pop();
+      if ("function" == queryType(t)) {
+        var r = this;
+        return r.map[e.join(r.split)] = t, r;
+      }
+    },
+    run: function() {
+      var e = this, t = toArray(arguments), r = e.map[t.join(e.split)];
+      return r && r.apply(null, e.args), e;
+    }
   };
   return Pjax.prototype = $.extend({
     init: function() {
@@ -285,7 +304,20 @@
         var o = i.current;
         e._setDomIdByConf(n, o), e._setDomState(n, !0);
       }
-      e.clsCtrl = new StateClsCtrl(e.key, r.animateTime);
+      e.clsCtrl = new StateClsCtrl(e.key, r.animateTime), e.stateRunner = new Runner(), 
+      e.initRunner();
+    },
+    initRunner: function() {
+      var e = this, t = e.stateRunner, r = "history";
+      t.add(r, "push", function(t) {
+        e.history.push(t);
+      }), t.add(r, "replace", function(t) {
+        e.history.replace(t);
+      }), r = "dom", t.add(r, "push", function(t, r) {
+        e._setDomIdByConf(r, e.history.current);
+      }), t.add(r, "replace", function(t, r) {
+        e.fire("dom:destroy", [ t ]), t.remove(), e._setDomIdByConf(r, e.history.current);
+      });
     },
     _setDomIdByConf: function(e, t) {
       e.attr(this.keyId, t.id);
@@ -352,15 +384,9 @@
       try {
         var i = n._analysisiHtml(r, e);
         if (!i.$dom || i.$dom.length <= 0) return n.lockAjax = !1, void n.fire("pjax:parseerror", [ e, r ]);
-        n._addContent(i, t, function(r, i) {
-          switch (n.lockAjax = !1, t) {
-           case "push":
-            n.history.push(e), n._setDomIdByConf(i, n.history.current);
-            break;
-
-           case "replace":
-            n.history.replace(e), n.fire("dom:destroy", [ r ]), r.remove(), n._setDomIdByConf(i, n.history.current);
-          }
+        var o = n.stateRunner;
+        o.params(e).run("history", t), n._addContent(i, t, function(e, r) {
+          n.lockAjax = !1, o.params(e, r).run("dom", t);
         });
       } catch (t) {
         n.lockAjax = !1, n.fire("pjax:parseerror", [ e, r ]);

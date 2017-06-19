@@ -2,7 +2,7 @@
 
 #banner { width: 100%; }
 #banner a { display: block; }
-#banner .image { width: 100%; vertical-align: bottom; }
+#banner .image { display: block; width: 100%; vertical-align: bottom; }
 
 #quikList { margin-top: 8px; font-size: 0; text-align: center; background: #fff; }
 #quikList li { display: inline-block; font-size: 14px; width: 150px; padding: 10px; }

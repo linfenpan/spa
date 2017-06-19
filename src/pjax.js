@@ -63,6 +63,34 @@ Pjax.prototype = $.extend({
 
     // 样式控制器
     ctx.clsCtrl = new StateClsCtrl(ctx.key, opts.animateTime);
+
+    // 状态控制
+    ctx.stateRunner = new Runner();
+    ctx.initRunner();
+  },
+
+  initRunner: function() {
+    var ctx = this;
+    var runner = ctx.stateRunner;
+
+    var key = 'history';
+    runner.add(key, 'push', function(url) {
+      // 在 bindEvent 中的 EVENT_STATE_PUSH 中，清理不存在的元素
+      ctx.history.push(url);
+    });
+    runner.add(key, 'replace', function(url) {
+      ctx.history.replace(url);
+    });
+
+    key = 'dom';
+    runner.add(key, 'push', function($old, $now) {
+      ctx._setDomIdByConf($now, ctx.history.current);
+    });
+    runner.add(key, 'replace', function($old, $now) {
+      ctx.fire('dom:destroy', [$old]);
+      $old.remove();
+      ctx._setDomIdByConf($now, ctx.history.current);
+    });
   },
 
   _setDomIdByConf: function($dom, conf) {
@@ -196,23 +224,12 @@ Pjax.prototype = $.extend({
         ctx.fire(EVENT_PARSE_ERROR, [url, html]);
         return;
       }
+
+      var runner = ctx.stateRunner;
+      runner.params(url).run('history', addMode);
       ctx._addContent(result, addMode, function($old, $now) {
         ctx.lockAjax = false;
-        switch (addMode) {
-          case 'push':
-            ctx.history.push(url);
-            // 在 bindEvent 中的 EVENT_STATE_PUSH 中，清理不存在的元素
-            ctx._setDomIdByConf($now, ctx.history.current);
-            break;
-          case 'replace':
-            ctx.history.replace(url);
-            ctx.fire('dom:destroy', [$old]);
-            $old.remove();
-            ctx._setDomIdByConf($now, ctx.history.current);
-            break;
-          default:
-            break;
-        }
+        runner.params($old, $now).run('dom', addMode);
       });
     } catch (e) {
       ctx.lockAjax = false;
