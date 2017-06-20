@@ -1,8 +1,8 @@
 /**
   @rely: jQuery
   @author: da宗熊
-  @version: 0.0.3
-  @lastModify: 2017/6/19
+  @version: 0.0.4
+  @lastModify: 2017/6/20
   @git: https://github.com/linfenpan/spa#readme
 */
 !function(e, t) {
@@ -48,7 +48,9 @@
     var i = this;
     r.call(i), i.$root = t, i.opts = $.extend({
       key: "pjax",
-      animateTime: 300
+      cache: !0,
+      animateTime: 300,
+      fireInitEvent: !0
     }, n || {});
     var o = i.key = i.opts.key;
     i.keyContainer = "data-" + o + "-container", i.keyIgnore = "data-" + o + "-ignore", 
@@ -224,7 +226,7 @@
         from: i,
         to: o,
         back: r._getList(r.keyBack),
-        foward: r._getList(r.keyForward)
+        forward: r._getList(r.keyForward)
       } ]);
     },
     _replace: function(e) {
@@ -251,7 +253,7 @@
         to: e,
         isBack: r,
         back: t._getList(t.keyBack),
-        foward: t._getList(t.keyForward)
+        forward: t._getList(t.keyForward)
       } ]);
     }
   }, StateClsCtrl.prototype = {
@@ -295,6 +297,7 @@
       return r && r.apply(null, e.args), e;
     }
   };
+  var s = "dom:destroy";
   return Pjax.prototype = $.extend({
     init: function() {
       var e = this, t = this.$root, r = this.opts, n = t.find("[" + e.keyContainer + "]");
@@ -302,7 +305,9 @@
       var i = e.history = new HistoryController(e.key);
       if (history.state || i.clear(), i.replace(location.href), n.length > 0) {
         var o = i.current;
-        e._setDomIdByConf(n, o), e._setDomState(n, !0);
+        e._setDomIdByConf(n, o), e._setDomState(n, !0), r.fireInitEvent && setTimeout(function() {
+          e.fire("pjax:render", [ n ]), e.fire("dom:ready", [ n ]);
+        });
       }
       e.clsCtrl = new StateClsCtrl(e.key, r.animateTime), e.stateRunner = new Runner(), 
       e.initRunner();
@@ -333,7 +338,7 @@
         }), e.$root.find("[" + e.keyId + "]").each(function(t, n) {
           var i = $(n), o = i.attr(e.keyId);
           r[o] || setTimeout(function() {
-            e.fire("dom:destroy", [ i ]), i.remove();
+            e.fire(s, [ i ]), i.remove();
           }, e.opts.animateTime);
         });
       }
@@ -356,27 +361,32 @@
     forward: function(e) {
       history.forward();
     },
-    push: function(t) {
-      e ? this._load(t, "push") : location.href = t;
+    push: function(t, r) {
+      e ? this._load(t, "push", !1, r) : location.href = t;
     },
-    replace: function(t) {
-      e ? this._load(t, "replace") : location.replace(t);
+    replace: function(t, r) {
+      e ? this._load(t, "replace", !1, r) : location.replace(t);
     },
-    reload: function(t) {
-      e ? this._load(t || location.href, "replace", !0) : location.reload();
+    reload: function(t, r) {
+      "boolean" == typeof t && (r = t, t = void 0), e ? this._load(t || location.href, "replace", !0, r) : location.reload();
     },
-    _load: function(e, t, r) {
-      var n = this;
+    _load: function(e, t, r, n) {
+      var i = this;
       "object" === queryType(e) && (e = e.href || "");
-      var i = toAbsUrl(e);
-      if ((r || i !== location.href) && !n.lockAjax) return n.fire("pjax:request", [ i ].concat(toArray(arguments))), 
-      n.ajax && n.ajax.abort(), n.ajax = $.get(i, {}, $.noop, "html").always(function() {
-        n.fire("pjax:complete", [ i ].concat(toArray(arguments)));
+      var o = toAbsUrl(e);
+      if ((r || o !== location.href) && !i.lockAjax) return i.fire("pjax:request", [ o ].concat(toArray(arguments))), 
+      i.ajax && i.ajax.abort(), i.ajax = $.ajax({
+        url: o,
+        type: "GET",
+        cache: void 0 === n ? i.opts.cache : n,
+        dataType: "html"
+      }).always(function() {
+        i.fire("pjax:complete", [ o ].concat(toArray(arguments)));
       }).done(function(e) {
-        n.fire("pjax:success", [ i ].concat(toArray(arguments))), n.handlerSuccess(i, t, e);
+        i.fire("pjax:success", [ o ].concat(toArray(arguments))), i.handlerSuccess(o, t, e);
       }).fail(function() {
-        n.fire("pjax:failure", [ i ].concat(toArray(arguments)));
-      }), n.ajax;
+        i.fire("pjax:failure", [ o ].concat(toArray(arguments)));
+      }), i.ajax;
     },
     handlerSuccess: function(e, t, r) {
       var n = this;
@@ -395,7 +405,7 @@
     _analysisiHtml: function(e, t) {
       var r = this, n = document.head || document.getElementsByTagName("head")[0], i = e.match(/<body[^>]*>([\s\S.]*)<\/body>/), o = e.match(/<head[^>]*>([\s\S.]*)<\/head>/), a = [], s = [], c = null, u = null, f = null;
       i && (u = $("<div>" + i[1] + "</div>")), o && (f = $("<div>" + o[1] + "</head>"));
-      var d = "link[" + r.keyIgnore + "],style[" + r.keyIgnore + "],script[" + r.keyIgnore + "]", l = function(e, n) {
+      var d = "link[" + r.keyIgnore + "],style[" + r.keyIgnore + "],script[" + r.keyIgnore + "]", h = function(e, n) {
         var i = e.getAttribute(r.keyResource);
         return e.href ? e.setAttribute("href", toAbsUrl(e.getAttribute("href"), t)) : e.src && e.setAttribute("src", toAbsUrl(e.getAttribute("src"), t)), 
         {
@@ -406,13 +416,13 @@
       };
       return f && (u.find(d).remove(), f.find("style,link,script").each(function(e, t) {
         var r = s;
-        "script" === t.tagName.toLowerCase() && (r = a), r.push(l(t, n));
+        "script" === t.tagName.toLowerCase() && (r = a), r.push(h(t, n));
       })), u && (u.find(d).remove(), c = u.find("[" + r.keyContainer + "]"), u.find("script").map(function(e, t) {
         $(t);
         c.find(t).length > 0 ? (t.setAttribute(r.keyResource, t.getAttribute(r.keyResource) || 1), 
-        a.push(l(t, c[0]))) : t.hasAttribute(r.keyResource) && a.push(l(t, n));
+        a.push(h(t, c[0]))) : t.hasAttribute(r.keyResource) && a.push(h(t, n));
       }), c.find("script").remove(), c.remove(), u.find("style,link").each(function(e, t) {
-        t.hasAttribute(r.keyResource) && s.push(l(t, n));
+        t.hasAttribute(r.keyResource) && s.push(h(t, n));
       })), {
         scripts: a,
         links: s,

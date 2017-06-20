@@ -1,6 +1,6 @@
 {
   "name": "spa",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "single page application",
   "main": "dist/jquery-pjax.min.js",
   "repository": {

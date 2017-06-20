@@ -90,7 +90,7 @@ HistoryController.prototype = {
       from: now,
       to: state,
       back: ctx._getList(ctx.keyBack),
-      foward: ctx._getList(ctx.keyForward)
+      forward: ctx._getList(ctx.keyForward)
     }]);
   },
 
@@ -150,7 +150,7 @@ HistoryController.prototype = {
       to: nowState,
       isBack: isBack,
       back: ctx._getList(ctx.keyBack),
-      foward: ctx._getList(ctx.keyForward)
+      forward: ctx._getList(ctx.keyForward)
     }]);
   }
 };

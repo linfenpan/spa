@@ -7,6 +7,14 @@ var EVENT_PJAX_FAILURE = 'pjax:failure';
 // 结构解析出错，应该检查 ajax 返回的内容，是否合法
 var EVENT_PARSE_ERROR = 'pjax:parseerror';
 
+// DOM 事件
+var EVENT_DOM_READY = 'dom:ready';
+var EVENT_DOM_BEFORE_SHOW = 'dom:beforeshow';
+var EVENT_DOM_SHOW = 'dom:show';
+var EVENT_DOM_BEFORE_HIDE = 'dom:beforehide';
+var EVENT_DOM_HIDE = 'dom:hide';
+var EVENT_DOM_DESTROY = 'dom:destroy';
+
 function Pjax($root, opts) {
   var ctx = this;
   Event.call(ctx);
@@ -16,8 +24,12 @@ function Pjax($root, opts) {
   ctx.opts = $.extend({
     // 每个 pjax 实例的 key，必须唯一
     key: 'pjax',
+    // 是否使用缓存
+    cache: true,
     // 动画执行完毕需要的时间
-    animateTime: 300
+    animateTime: 300,
+    // 发布初始化的事件
+    fireInitEvent: true
   }, opts || {});
 
   var key = ctx.key = ctx.opts.key;
@@ -59,6 +71,14 @@ Pjax.prototype = $.extend({
       var conf = his.current;
       ctx._setDomIdByConf($current, conf);
       ctx._setDomState($current, true);
+
+      if (opts.fireInitEvent) {
+        // 让事件有充分事件进行准备
+        setTimeout(function() {
+          ctx.fire(EVENT_PJAX_RENDER, [$current]);
+          ctx.fire(EVENT_DOM_READY, [$current]);
+        });
+      }
     }
 
     // 样式控制器
@@ -143,7 +163,7 @@ Pjax.prototype = $.extend({
         var $dom = $(dom), id = $dom.attr(ctx.keyId);
         if (!map[id]) {
           setTimeout(function() {
-            ctx.fire('dom:destroy', [$dom]);
+            ctx.fire(EVENT_DOM_DESTROY, [$dom]);
             $dom.remove();
           }, ctx.opts.animateTime);
         }
@@ -159,31 +179,36 @@ Pjax.prototype = $.extend({
     history.forward();
   },
 
-  push: function(url) {
+  push: function(url, isCache) {
     if (isSupport) {
-      this._load(url, 'push');
+      this._load(url, 'push', false, isCache);
     } else {
       location.href = url;
     }
   },
 
-  replace: function(url) {
+  replace: function(url, isCache) {
     if (isSupport) {
-      this._load(url, 'replace');
+      this._load(url, 'replace', false, isCache);
     } else {
       location.replace(url);
     }
   },
 
-  reload: function(url) {
+  reload: function(url, isCache) {
+    if (typeof url === 'boolean') {
+      isCache = url;
+      url = void 0;
+    }
+    
     if (isSupport) {
-      this._load(url || location.href, 'replace', true);
+      this._load(url || location.href, 'replace', true, isCache);
     } else {
       location.reload();
     }
   },
 
-  _load: function(absUrl, addMode, forceUpdate) {
+  _load: function(absUrl, addMode, forceUpdate, isCache) {
     var ctx = this;
     if (queryType(absUrl) === 'object') {
       absUrl = absUrl.href || '';
@@ -198,7 +223,12 @@ Pjax.prototype = $.extend({
     ctx.fire(EVENT_PJAX_REQUEST, [url].concat(toArray(arguments)));
     ctx.ajax && ctx.ajax.abort();
 
-    ctx.ajax = $.get(url, {}, $.noop, 'html')
+    ctx.ajax = $.ajax({
+      url: url,
+      type: 'GET',
+      cache: isCache === void 0 ? ctx.opts.cache : isCache,
+      dataType: 'html'
+    })
       .always(function() {
         ctx.fire(EVENT_PJAX_COMPLETE, [url].concat(toArray(arguments)));
       })
@@ -344,18 +374,18 @@ Pjax.prototype = $.extend({
 
       $.when(defScript, defAnimate).always(function() {
         ctx.fire(EVENT_PJAX_RENDER, [$show]);
-        ctx.fire('dom:ready', [$show]);
+        ctx.fire(EVENT_DOM_READY, [$show]);
       });
 
-      ctx.fire('dom:beforeshow', [$show]);
-      ctx.fire('dom:beforehide', [$hide]);
+      ctx.fire(EVENT_DOM_BEFORE_SHOW, [$show]);
+      ctx.fire(EVENT_DOM_BEFORE_HIDE, [$hide]);
 
       ctx.clsCtrl.animate(addMode || 'replace', $hide, $show, function() {
         ctx._setDomState($show, true);
         ctx._setDomState($hide, false);
 
-        ctx.fire('dom:show', [$show]);
-        ctx.fire('dom:hide', [$hide]);
+        ctx.fire(EVENT_DOM_SHOW, [$show]);
+        ctx.fire(EVENT_DOM_HIDE, [$hide]);
 
         defAnimate.resolve();
 

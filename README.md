@@ -102,17 +102,21 @@ pjax-div 标签内的所有资源，每次 pjax 请求时，默认会把该标�
     // 每个 $.pjax 实例，必须有唯一的 key 值，默认是 pjax
     // 此 key，用来组装当前实例使用的属性
     key: 'pjax',
+    // 请求是否使用缓存？
+    cache: true,
     // 页面前端，运行动画需要的时间。
     // 如果没有动画要求，请设置为 0
-    animateTime: 300
+    animateTime: 300,
+    // 是否触发初始话的 dom:ready 和 pjax:render 事件？
+    fireInitEvent: true
   });
 
   // 有以下几个方法:
-  pjax.push(带 href 的 a 标签，或 uri 链接);    // 类似 location.href = url
-  pjax.replace(带 href 的 a 标签，或 uri 链接); // 类似 location.replace
+  pjax.push(带 href 的 a 标签，或 uri 链接, isCache);    // 类似 location.href = url
+  pjax.replace(带 href 的 a 标签，或 uri 链接, isCache); // 类似 location.replace
   pjax.back();    // 后退
   pjax.forward(); // 前进
-  pjax.reload();  // 刷新
+  pjax.reload(url?, isCache);  // 刷新，如果有 url 参数，则异步请求 url 参数
 
   pjax.on('事件名', 回调函数); // 同理，有 off/fire/one 几个函数，参考 jQuery 事件
 
@@ -176,6 +180,7 @@ $.pjax 请求 ```page/list.html``` 时，将会把 ```<div><ul>...</ul></div>```
 
 事件执行顺序如下:
 pjax:request -> pjax:complete -> pjax:success|pjax:failure -> dom:beforeshow -> dom:beforehide -> dom:show -> dom:hide -> pjax:render -> dom:ready
+
 
 
 ## 动画钩子类

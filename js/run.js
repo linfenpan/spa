@@ -15,7 +15,7 @@
 //   hCtrl.push(this.href, { });
 // });
 
-var pjax = $.pjax($('body'));
+var pjax = $.pjax($('body'), { cache: true });
 
 $('#btmBar').on('click', 'a', function() {
   pjax.push(this);
