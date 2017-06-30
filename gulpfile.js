@@ -27,7 +27,7 @@ const textHeader = `
       });
     }
   } else {
-    ctx['SPA'] = factory();
+    ctx['Pjax'] = factory();
   }
 })(this, function() {\n`;
 const textFooter = `return Pjax; \n});`;

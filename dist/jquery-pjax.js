@@ -1,14 +1,14 @@
 /**
   @rely: jQuery
   @author: da宗熊
-  @version: 0.0.4
-  @lastModify: 2017/6/20
+  @version: 0.0.5
+  @lastModify: 2017/6/30
   @git: https://github.com/linfenpan/spa#readme
 */
 !function(e, t) {
   "function" == typeof define ? define.amd ? define(t) : define.cmd && define(function(e, r, n) {
     n.exports = t();
-  }) : e.SPA = t();
+  }) : e.Pjax = t();
 }(this, function() {
   "use strict";
   function each(e, t) {
@@ -50,12 +50,23 @@
       key: "pjax",
       cache: !0,
       animateTime: 300,
-      fireInitEvent: !0
+      fireInitEvent: !0,
+      resourceLoadConfig: {
+        body: {},
+        head: {},
+        container: {},
+        other: {}
+      }
     }, n || {});
     var o = i.key = i.opts.key;
-    i.keyContainer = "data-" + o + "-container", i.keyIgnore = "data-" + o + "-ignore", 
-    i.keyResource = "data-" + o + "-res", i.keyCurrent = "data-" + o + "-current", i.keyId = "data-" + o + "-id", 
-    i.ajax = null, i.lockAjax = !1, e && (i.init(), i.bindEvent());
+    if (i.keyContainer = "data-" + o + "-container", i.keyResource = "data-" + o + "-res", 
+    i.keyCurrent = "data-" + o + "-current", i.keyId = "data-" + o + "-id", i.ajax = null, 
+    i.lockAjax = !1, e) i.init(), i.bindEvent(); else {
+      var a = t.find("[" + i.keyContainer + "]");
+      i.opts.fireInitEvent && setTimeout(function() {
+        i.fire(s, [ a ]);
+      });
+    }
   }
   var e = "pushState" in history && !!window.sessionStorage;
   if (window.sessionStorage) try {
@@ -297,7 +308,7 @@
       return r && r.apply(null, e.args), e;
     }
   };
-  var s = "dom:destroy";
+  var s = "dom:ready", c = "dom:destroy";
   return Pjax.prototype = $.extend({
     init: function() {
       var e = this, t = this.$root, r = this.opts, n = t.find("[" + e.keyContainer + "]");
@@ -306,7 +317,7 @@
       if (history.state || i.clear(), i.replace(location.href), n.length > 0) {
         var o = i.current;
         e._setDomIdByConf(n, o), e._setDomState(n, !0), r.fireInitEvent && setTimeout(function() {
-          e.fire("pjax:render", [ n ]), e.fire("dom:ready", [ n ]);
+          e.fire("pjax:render", [ n ]), e.fire(s, [ n ]);
         });
       }
       e.clsCtrl = new StateClsCtrl(e.key, r.animateTime), e.stateRunner = new Runner(), 
@@ -338,7 +349,7 @@
         }), e.$root.find("[" + e.keyId + "]").each(function(t, n) {
           var i = $(n), o = i.attr(e.keyId);
           r[o] || setTimeout(function() {
-            e.fire(s, [ i ]), i.remove();
+            e.fire(c, [ i ]), i.remove();
           }, e.opts.animateTime);
         });
       }
@@ -402,45 +413,78 @@
         n.lockAjax = !1, n.fire("pjax:parseerror", [ e, r ]);
       }
     },
+    _getResLoadMode: function(e, t, r) {
+      return ((this.opts.resourceLoadConfig || {})[e] || {})[t] || r;
+    },
     _analysisiHtml: function(e, t) {
-      var r = this, n = document.head || document.getElementsByTagName("head")[0], i = e.match(/<body[^>]*>([\s\S.]*)<\/body>/), o = e.match(/<head[^>]*>([\s\S.]*)<\/head>/), a = [], s = [], c = null, u = null, f = null;
-      i && (u = $("<div>" + i[1] + "</div>")), o && (f = $("<div>" + o[1] + "</head>"));
-      var d = "link[" + r.keyIgnore + "],style[" + r.keyIgnore + "],script[" + r.keyIgnore + "]", h = function(e, n) {
-        var i = e.getAttribute(r.keyResource);
-        return e.href ? e.setAttribute("href", toAbsUrl(e.getAttribute("href"), t)) : e.src && e.setAttribute("src", toAbsUrl(e.getAttribute("src"), t)), 
-        {
+      var r, n = this, i = n.keyResource, o = document.head || document.getElementsByTagName("head")[0], a = e.match(/<body[^>]*>([\s\S.]*)<\/body>/), s = e.match(/<head[^>]*>([\s\S.]*)<\/head>/), c = [], u = [], d = null, f = null, l = null;
+      a && (f = $("<div>" + a[1] + "</div>"), d = f.find("[" + n.keyContainer + "]"), 
+      r = d[0]), s && (l = $("<div>" + s[1] + "</head>"));
+      var h = i + "=ignore", p = "link[" + h + "],style[" + h + "],script[" + h + "]", y = function(e, a, s) {
+        var d, f = e.getAttribute(i), l = e.tagName.toLowerCase();
+        s = s || [], e.href ? (d = u, e.setAttribute("href", toAbsUrl(e.getAttribute("href"), t))) : e.src ? (d = c, 
+        e.setAttribute("src", toAbsUrl(e.getAttribute("src"), t))) : "script" === l ? (d = c, 
+        l = "inlineScript") : d = u;
+        var h;
+        switch (l) {
+         case "inlineScript":
+         case "style":
+          h = r;
+          break;
+
+         case "script":
+         case "link":
+          h = "repeat" === f ? r : o;
+        }
+        f || (f = n._getResLoadMode(a, l, s[l])), d && h && "ignore" != f && d.push({
           dom: e,
-          pos: n,
-          ignoreRepeat: 0 == i || !i
-        };
+          pos: h,
+          ignoreRepeat: "once" == f || !f
+        });
       };
-      return f && (u.find(d).remove(), f.find("style,link,script").each(function(e, t) {
-        var r = s;
-        "script" === t.tagName.toLowerCase() && (r = a), r.push(h(t, n));
-      })), u && (u.find(d).remove(), c = u.find("[" + r.keyContainer + "]"), u.find("script").map(function(e, t) {
-        $(t);
-        c.find(t).length > 0 ? (t.setAttribute(r.keyResource, t.getAttribute(r.keyResource) || 1), 
-        a.push(h(t, c[0]))) : t.hasAttribute(r.keyResource) && a.push(h(t, n));
-      }), c.find("script").remove(), c.remove(), u.find("style,link").each(function(e, t) {
-        t.hasAttribute(r.keyResource) && s.push(h(t, n));
-      })), {
-        scripts: a,
-        links: s,
-        $dom: c
+      return l && (f.find(p).remove(), l.find("script,link,style").each(function(e, t) {
+        y(t, "head", {
+          inlineScript: "repeat",
+          script: "once",
+          style: "repeat",
+          link: "once"
+        });
+      })), f && (f.find(p).remove(), f.find("script,link,style").map(function(e, t) {
+        var r = $(t);
+        d.find(t).length > 0 ? y(t, "container", {
+          inlineScript: "repeat",
+          script: "repeat",
+          style: "repeat",
+          link: "repeat"
+        }) : r.parent().is(f) ? y(t, "body", {
+          inlineScript: "repeat",
+          script: "once",
+          style: "repeat",
+          link: "once"
+        }) : y(t, "other", {
+          inlineScript: "ignore",
+          script: "ignore",
+          style: "ignore",
+          link: "ignore"
+        });
+      }), d.find("script,link,style").remove(), d.remove()), {
+        scripts: c,
+        links: u,
+        $dom: d
       };
     },
     _addContent: function(e, t, r) {
       var n = this;
       if (e.$dom && 1 === e.$dom.length) {
         n.$root.append(e.$dom);
-        var o = e.$dom, a = n.$root.find("[" + n.keyCurrent + "]"), s = $.Deferred(), c = $.Deferred();
-        i.addScripts(e.scripts, function() {
-          s.resolve();
-        }), i.addLinks(e.links), $.when(s, c).always(function() {
-          n.fire("pjax:render", [ o ]), n.fire("dom:ready", [ o ]);
+        var o = e.$dom, a = n.$root.find("[" + n.keyCurrent + "]"), c = $.Deferred(), u = $.Deferred();
+        i.addLinks(e.links), i.addScripts(e.scripts, function() {
+          c.resolve();
+        }), $.when(c, u).always(function() {
+          n.fire("pjax:render", [ o ]), n.fire(s, [ o ]);
         }), n.fire("dom:beforeshow", [ o ]), n.fire("dom:beforehide", [ a ]), n.clsCtrl.animate(t || "replace", a, o, function() {
           n._setDomState(o, !0), n._setDomState(a, !1), n.fire("dom:show", [ o ]), n.fire("dom:hide", [ a ]), 
-          c.resolve(), r && r(a, o);
+          u.resolve(), r && r(a, o);
         });
       } else console.error("缺少 dom 元素");
     }

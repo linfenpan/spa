@@ -15,6 +15,17 @@ var EVENT_DOM_BEFORE_HIDE = 'dom:beforehide';
 var EVENT_DOM_HIDE = 'dom:hide';
 var EVENT_DOM_DESTROY = 'dom:destroy';
 
+// 资源类型
+var TYPE_RES_REPEAT = 'repeat';
+var TYPE_RES_IGNORE = 'ignore';
+var TYPE_RES_ONCE = 'once';
+
+// dom 元素类型
+var DOM_TYPE_SCRIPT = 'script';
+var DOM_TYPE_INLINE_SCRIPT = 'inlineScript';
+var DOM_TYPE_STYLE = 'style';
+var DOM_TYPE_LINK = 'link';
+
 function Pjax($root, opts) {
   var ctx = this;
   Event.call(ctx);
@@ -29,13 +40,20 @@ function Pjax($root, opts) {
     // 动画执行完毕需要的时间
     animateTime: 300,
     // 发布初始化的事件
-    fireInitEvent: true
+    fireInitEvent: true,
+
+    // 资源默认加载方式，other 是指在 body 内，但又不是 body 最外层的资源
+    resourceLoadConfig: {
+      body: { /* inlineScript:, script:, style:, link: */ },
+      head: { /* inlineScript:, script:, style:, link: */ },
+      container: { /* inlineScript:, script:, style:, link: */ },
+      other: { /* inlineScript:, script:, style:, link: */ }
+    }
   }, opts || {});
 
   var key = ctx.key = ctx.opts.key;
 
   ctx.keyContainer = 'data-' + key + '-container';
-  ctx.keyIgnore = 'data-' + key + '-ignore';
   ctx.keyResource = 'data-' + key + '-res'; // 0: 重复加载，1: 加载一次
   ctx.keyCurrent = 'data-' + key + '-current';
   ctx.keyId = 'data-' + key + '-id';
@@ -46,7 +64,16 @@ function Pjax($root, opts) {
   if (isSupport) {
     ctx.init();
     ctx.bindEvent();
+  } else {
+    // 如果不支持 $.pjax，也发布 dom:ready 事件
+    var $current = $root.find('[' + ctx.keyContainer+ ']');
+    if (ctx.opts.fireInitEvent) {
+      setTimeout(function() {
+        ctx.fire(EVENT_DOM_READY, [$current]);
+      });
+    }
   }
+
 }
 
 Pjax.prototype = $.extend({
@@ -200,7 +227,7 @@ Pjax.prototype = $.extend({
       isCache = url;
       url = void 0;
     }
-    
+
     if (isSupport) {
       this._load(url || location.href, 'replace', true, isCache);
     } else {
@@ -267,8 +294,15 @@ Pjax.prototype = $.extend({
     }
   },
 
+  _getResLoadMode: function(container, type, defaultValue) {
+    var conf = this.opts.resourceLoadConfig || {};
+    var map = conf[container] || {};
+    return map[type] || defaultValue;
+  },
+
   _analysisiHtml: function(html, url) {
     var ctx = this;
+    var keyResource = ctx.keyResource;
     var elHead = document.head || document.getElementsByTagName('head')[0];
     var matcherBody = html.match(/<body[^>]*>([\s\S.]*)<\/body>/);
     var matcherHead = html.match(/<head[^>]*>([\s\S.]*)<\/head>/);
@@ -276,43 +310,82 @@ Pjax.prototype = $.extend({
     var scripts = [],    // 插入到 head 的脚本元素
       links = [];        // 插入到 head 的样式元素
     var $dom = null, $body = null, $head = null;
+    var elDom;
 
     if (matcherBody) {
       $body = $('<div>' + matcherBody[1] + '</div>');
+      $dom = $body.find('[' + ctx.keyContainer + ']');
+      elDom = $dom[0];
     }
     if (matcherHead) {
       $head = $('<div>' + matcherHead[1] + '</head>');
     }
 
-    // 找到所有含有 ctx.keyIgnore 属性的 link/style/script 标签
-    var selectorIgnore = 'link[' + ctx.keyIgnore + '],style[' + ctx.keyIgnore + '],script[' + ctx.keyIgnore + ']';
+    // 找到所有含有 ctx.keyResource = 'ignore' 属性的 link/style/script 标签
+    var attrIgnore = keyResource + '=ignore';
+    var selectorIgnore = 'link[' + attrIgnore + '],style[' + attrIgnore + '],script[' + attrIgnore + ']';
+    var selectorResource = 'script,link,style';
 
     // 转为配置列表
-    var toConfItem = function(dom, elAppendTo) {
-      var attrResource = dom.getAttribute(ctx.keyResource);
+    var addConfItem = function(dom, from, resLoadConf) {
+      var attrResource = dom.getAttribute(keyResource);
+      var domType = dom.tagName.toLowerCase();
+      var list;
+
+      resLoadConf = resLoadConf || [];
+
       // 相对路径，修复为绝对路径
       if (dom.href) {
+        list = links;
         dom.setAttribute('href', toAbsUrl(dom.getAttribute('href'), url));
       } else if (dom.src) {
+        list = scripts;
         dom.setAttribute('src', toAbsUrl(dom.getAttribute('src'), url));
+      } else {
+        if (domType === 'script') {
+          list = scripts;
+          domType = DOM_TYPE_INLINE_SCRIPT;
+        } else {
+          list = links;
+        }
       }
-      return {
-        dom: dom,
-        pos: elAppendTo,
-        ignoreRepeat: attrResource == 0 || !attrResource
-      };
+
+      var appendTo;
+      switch (domType) {
+        case DOM_TYPE_INLINE_SCRIPT:
+        case DOM_TYPE_STYLE:
+          appendTo = elDom;
+          break;
+        case DOM_TYPE_SCRIPT:
+        case DOM_TYPE_LINK:
+          appendTo = attrResource === TYPE_RES_REPEAT ? elDom : elHead;
+          break;
+      }
+
+      if (!attrResource) {
+        attrResource = ctx._getResLoadMode(from, domType, resLoadConf[domType]);
+      }
+
+      if (list && appendTo && attrResource != TYPE_RES_IGNORE) {
+        list.push({
+          dom: dom,
+          pos: appendTo,
+          ignoreRepeat: attrResource == TYPE_RES_ONCE || !attrResource
+        });
+      }
     };
 
     if ($head) {
       // 删除所有忽略的资源
       $body.find(selectorIgnore).remove();
       // $head 所有元素，默认是仅加载一次的
-      $head.find('style,link,script').each(function(i, dom) {
-        var list = links;
-        if (dom.tagName.toLowerCase() === 'script') {
-          list = scripts;
-        }
-        list.push(toConfItem(dom, elHead));
+      $head.find(selectorResource).each(function(i, el) {
+        addConfItem(el, 'head', {
+          inlineScript: TYPE_RES_REPEAT,
+          script: TYPE_RES_ONCE,
+          style: TYPE_RES_REPEAT,
+          link: TYPE_RES_ONCE
+        });
       });
     }
 
@@ -320,38 +393,46 @@ Pjax.prototype = $.extend({
       // 删除所有忽略的资源
       $body.find(selectorIgnore).remove();
 
-      // 寻找主体内容元素
-      $dom = $body.find('[' + ctx.keyContainer + ']');
-
       // 从上到下，寻找所有资源
-      // $dom 的资源，默认是全部加载的，但是如果有 data-pjax-res 的标志，会根据标志进行加载
-      // $body 的资源，默认是全部忽略的，但是有 data-pjax-res 的标志，会根据标志进行加载
-
       // 寻找脚本
-      $body.find('script').map(function(i, script) {
-        var $script = $(script);
-        if ($dom.find(script).length > 0) {
-          // $dom 的元素，默认是 data-pjax-res="1"，即每次异步，都会重新加载，无论它是否已经存在
-          script.setAttribute(ctx.keyResource, script.getAttribute(ctx.keyResource) || 1);
-          scripts.push(toConfItem(script, $dom[0]));
+      $body.find(selectorResource).map(function(i, el) {
+        var $el = $(el);
+        if ($dom.find(el).length > 0) {
+          // $dom 的元素，默认是 data-pjax-res="repeat"，即每次异步，都会重新加载，无论它是否已经存在
+          addConfItem(el, 'container', {
+            inlineScript: TYPE_RES_REPEAT,
+            script: TYPE_RES_REPEAT,
+            style: TYPE_RES_REPEAT,
+            link: TYPE_RES_REPEAT
+          });
         } else {
-          // 非 $dom 的元素，默认是 data-pjax-ignore 的，如果没有 data-pjax-res 标志，忽略它们
-          if (script.hasAttribute(ctx.keyResource)) {
-            scripts.push(toConfItem(script, elHead));
+          // 外部脚本:
+          //  a) 非 $dom 的元素，默认是 data-pjax-res="once" 的;
+          //  b) 如果 data-pjax-res != ignore，就按照规则加载
+          //  c) 如果直接父元素是 body 的，又没有 data-pjax-res 标志的，则按 once 的模式加载
+          // 内联脚本:
+          //  跟外部脚本 a、b 两点规则一致，不过内联脚本，都插入 data-pjax-container 中
+          //  c) 如果直接父元素是 body 的，又没有 data-pjax-res 标志的，则按 repeat 的模式加载
+          if ($el.parent().is($body)) {
+            addConfItem(el, 'body', {
+              inlineScript: TYPE_RES_REPEAT,
+              script: TYPE_RES_ONCE,
+              style: TYPE_RES_REPEAT,
+              link: TYPE_RES_ONCE
+            });
+          } else {
+            addConfItem(el, 'other', {
+              inlineScript: TYPE_RES_IGNORE,
+              script: TYPE_RES_IGNORE,
+              style: TYPE_RES_IGNORE,
+              link: TYPE_RES_IGNORE
+            });
           }
         }
       });
 
-      $dom.find('script').remove();
+      $dom.find(selectorResource).remove();
       $dom.remove();
-
-      // 寻找所有样式
-      $body.find('style,link').each(function(i, link) {
-        // 如果没有 data-pjax-res 标志，则忽略之
-        if (link.hasAttribute(ctx.keyResource)) {
-          links.push(toConfItem(link, elHead));
-        }
-      });
     }
 
     return { scripts: scripts, links: links, $dom: $dom };
@@ -367,10 +448,10 @@ Pjax.prototype = $.extend({
 
       var defScript = $.Deferred(), defAnimate = $.Deferred();
 
+      resourceCtrl.addLinks(result.links);
       resourceCtrl.addScripts(result.scripts, function() {
         defScript.resolve();
       });
-      resourceCtrl.addLinks(result.links);
 
       $.when(defScript, defAnimate).always(function() {
         ctx.fire(EVENT_PJAX_RENDER, [$show]);

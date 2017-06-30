@@ -39,10 +39,17 @@ head 标签里的所有资源[script/link/style 标签]，每次 pjax 加载时�
 注: style 标签，因为没有 href 或 src，所以每次 pjax 都会插入该标签的内容，所以应该避免在 head 标签内，使用 style 标签。
 
 ## body 标签区域
-body 标签里的所有资源，每次 pjax 请求时，默认都不会进行加载，可以对资源标签，设置 ```data-pjax-res``` 标志，让 pjax 加载此资源
+ 1. 父层为 body 的 外部 script 和 link，默认进行 once 模式的加载，资源将插入到 head 中
+ * 父层不是 body 的外部 script 和 link，默认都是 ignore，忽略加载的，可以通过设置 ```data-pjax-res``` 标志，让 pjax 加载此资源
+ * 父层为 body 的 内联 script 和 style，默认都是进行 repeat 模式的加载
+ * 父层不是 body 的 内联 script 和 style，模式都是 ignore，忽略加载的，可以通过设置 ```data-pjax-res``` 标志，让 pjax 加载此资源。内联资源，仅识别 repeat 和 ignore
+ * 所有加载模式为 repeat，或者联资资源[inline script 或 style]，都将插入到 container 中
+ * 所有加载模式为 once 的资源，都将插入到 head 中
 
 ## pjax-div 标签区域
-pjax-div 标签内的所有资源，每次 pjax 请求时，默认会把该标签内的所有资源，重新加载一遍，可以通过设置 ```data-pjax-res="0"```，让 pjax 知道，该资源加载一次之后，就不再加载。
+  1. 所有 script/link/style 标签，默认使用 repeat 加载
+  * 可通过设置 data-pjax-res 标志，更改加载方式
+  * body 内，所有 pjax 加载回来的内联脚本，或内联样式，或设置了 data-pjax-res=repeat 标志的资源，都将插入到 pjax-div 中
 
 注: 每个页面，只允许存在一个 pjax-div 标签
 
@@ -54,17 +61,18 @@ pjax-div 标签内的所有资源，每次 pjax 请求时，默认会把该标�
   <link href="" />
   <script src=""></script>
   <script>
-    // 每次异步之后，都执行之~~~
+    // 每次异步之后，都会在 head 中，插入此脚本，所以head中尽量避免使用 script 标签
+    // 如果一定要使用，请配合 data-pjax=ignore 使用
   </script>
   <style>
-    /* 每次异步之后，都会插入此样式，所以尽量避免使用 style 标签 */
+    /* 每次异步之后，都会在 head 中插入此样式，所以head中尽量避免使用 style 标签 */
   </style>
 </head>
 <body>
 
   <!--
     每个页面，只允许有1个 data-pjax-container
-    内部的所有资源，默认都是 data-pjax-res="1" 的
+    内部的所有资源，默认都是 data-pjax-res="repeat" 的
   -->
   <div data-pjax-container>
     异步的内容
@@ -73,25 +81,38 @@ pjax-div 标签内的所有资源，每次 pjax 请求时，默认会把该标�
     <style>
       /* 每次异步回来时，都会加载的样式 */
     </style>
-    <style data-pjax-ignore>
-      /* 有 data-pjax-ignore 属性，每次异步回来时，都会忽略此样式 */
+    <style data-pjax-res="ignore">
+      /* 有 data-pjax-res=ignore 属性，每次异步回来时，都会忽略此样式 */
     </style>
     <!-- 加载一次后，忽略重复的 -->
-    <link href="" rel="" data-pjax-res="0" />
+    <link href="" rel="" data-pjax-res="once" />
   </div>
 
-  <!-- 在 body 内部的所有脚本、样式，默认都是 data-pjax-ignore的，默认全不加载! -->
+  <!-- 在 body 最外层的所有外部脚本、外部样式，默认都是 data-pjax-res=once的 -->
   <script src=""></script>
   <link href="" rel="stylesheet" />
-  <style>/* 异步的时候，会被忽略掉 */</style>
+
+  <!-- 在 body 最外层的所有内联脚本、内联样式，默认事都 data-pjax-res=repeat 的 -->
+  <style>
+    /* 每次异步加载，都会插入到 container 中 */
+  </style>
   <script>
-    /* 异步的时候，会被忽略掉 */
+    /* 每次异步加载，都会插入到 container 中 */
   </script>
 
-  <!-- 有 data-pjax-res="0" 或 没有值 标志的元素，异步时，仅加载一次 -->
-  <script src="" data-pjax-res="0"></script>
-  <!-- 有 data-pjax-res="1" 标志的元素，每次异步都会进行加载，无论是否已经加载过了 -->
-  <script src="" data-pjax-res="1"></script>
+  <!-- 有 data-pjax-res="once" 或 没有值 标志的元素，异步时，仅加载一次 -->
+  <script src="" data-pjax-res="once"></script>
+  <!-- 有 data-pjax-res="repeat" 标志的元素，每次异步都会进行加载，而且将插入到 container 中 -->
+  <script src="" data-pjax-res="repeat"></script>
+
+  <div>
+    <!-- 不在 body 最外层，默认是 data-res-pjax=ignore -->
+    <script src=""></script>
+    <!-- 根据 data-pjax-res=repeat，内容将插入到 container 中 -->
+    <script src="" data-pjax-res="repeat"></script>
+    <!-- 根据 data-pjax-res=once，内容将插入到 head 中 -->
+    <script src="" data-pjax-res="once"></script>
+  </div>
 </body>
 </html>
 ```
@@ -108,7 +129,19 @@ pjax-div 标签内的所有资源，每次 pjax 请求时，默认会把该标�
     // 如果没有动画要求，请设置为 0
     animateTime: 300,
     // 是否触发初始话的 dom:ready 和 pjax:render 事件？
-    fireInitEvent: true
+    fireInitEvent: true,
+
+    // 资源加载默认配置
+    resourceLoadConfig: {
+      // 在 body 最外层的资源
+      body: { /* inlineScript: repeat, script: once, style: repeat, link: once */ },
+      // 在 head 的资源
+      head: { /* inlineScript: repeat, script: once, style: repeat, link: once */ },
+      // 在 container 内的资源
+      container: { /* inlineScript: repeat, script: repeat, style: repeat, link: repeat */ },
+      // 在 body 内，但不是最外层的资源
+      other: { /* inlineScript: ignore, script: ignore, style: ignore, link: ignore*/ }
+    }
   });
 
   // 有以下几个方法:
@@ -120,7 +153,7 @@ pjax-div 标签内的所有资源，每次 pjax 请求时，默认会把该标�
 
   pjax.on('事件名', 回调函数); // 同理，有 off/fire/one 几个函数，参考 jQuery 事件
 
-  $.pjax.support // 当前浏览器，是否支持 $.pjax
+  $.pjax.support // 当前浏览器，是否支持 $.pjax，如果当前浏览器不支持 $.pjax，也会至少抛出 dom:ready 事件的
 ```
 其中 ```$('#main')``` 是当前页面主体内容、$.pjax 请求的内容，应该放置的容器。
 
