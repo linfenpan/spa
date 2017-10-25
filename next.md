@@ -13,3 +13,4 @@
 9. [√] 用参数，控制各处资源的加载方式，如 bodyRes, headRes, containerRes, otherRes -> repeat|once|ignore
 10. [√] 如果不支持 $.pjax，应该也抛出 dom:ready 事件
 11. 添加 ajax timeout 参数，添加 pjax:timeout 事件
+12. 支持返回页面标题
