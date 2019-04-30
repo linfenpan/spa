@@ -283,7 +283,7 @@
       return t && t.apply(null, this.args), this;
     }
   };
-  var h = "pjax:render", p = "pjax:parseerror", y = "dom:ready", m = "repeat", k = "ignore", v = "once", g = "inlineScript";
+  var h = "pjax:render", p = "pjax:parseerror", y = "dom:ready", m = "repeat", v = "ignore", k = "once", g = "inlineScript";
   function Pjax(e, t) {
     var r = this;
     l.call(r), r.$root = e, r.opts = $.extend({
@@ -304,7 +304,7 @@
     r.lockAjax = !1, o) r.init(), r.bindEvent(); else {
       var i = e.find("[" + r.keyContainer + "]");
       r.opts.fireInitEvent && setTimeout(function() {
-        r.fire(y, [ i ]);
+        r.fire(y, [ location.href, i ]);
       });
     }
   }
@@ -313,10 +313,12 @@
       var e = this, t = this.$root, r = this.opts, n = t.find("[" + e.keyContainer + "]");
       if (1 < n.length) throw "[" + e.keyContainer + "] 元素，同一个页面，不能有多个";
       var i = e.history = new HistoryController(e.key);
-      if (history.state || i.clear(), i.replace(location.href), 0 < n.length) {
-        var o = i.current;
-        e._setDomIdByConf(n, o), e._setDomState(n, !0), r.fireInitEvent && setTimeout(function() {
-          e.fire(h, [ n ]), e.fire(y, [ n ]);
+      history.state || i.clear();
+      var o = location.href;
+      if (i.replace(o), 0 < n.length) {
+        var a = i.current;
+        e._setDomIdByConf(n, a), e._setDomState(n, !0), r.fireInitEvent && setTimeout(function() {
+          e.fire(h, [ o, n ]), e.fire(y, [ o, n ]);
         });
       }
       e.clsCtrl = new StateClsCtrl(e.key, r.animateTime), e.stateRunner = new Runner(), 
@@ -361,7 +363,7 @@
           var t = e.to.url, r = e.isBack ? "back" : "forward", n = o.$root.find("[" + o.keyId + "=" + e.to.id + "]");
           0 < n.length ? o._addContent({
             $dom: n
-          }, r) : o._load(t, r, !0);
+          }, t, r) : o._load(t, r, !0);
         }
       });
     },
@@ -406,7 +408,7 @@
         o.params(t).run("history", r);
         var e = i._analysisiHtml(n, t);
         if (!e.$dom || e.$dom.length <= 0) return i.lockAjax = !1, void i.fire(p, [ t, n, r ]);
-        i._addContent(e, r, function(e, t) {
+        i._addContent(e, t, r, function(e, t) {
           i.lockAjax = !1, o.params(e, t).run("dom", r);
         });
       } catch (e) {
@@ -420,7 +422,7 @@
       var c, u = this, d = u.keyResource, f = document.head || document.getElementsByTagName("head")[0], t = e.match(/<body[^>]*>([\s\S.]*)<\/body>/), r = e.match(/<head[^>]*>([\s\S.]*)<\/head>/), l = [], h = [], n = null, i = null, o = null;
       t && (i = $("<div>" + t[1] + "</div>"), n = i.find("[" + u.keyContainer + "]"), 
       c = n[0]), r && (o = $("<div>" + r[1] + "</head>"));
-      function ud(e, t, r) {
+      function vd(e, t, r) {
         var n, i, o = e.getAttribute(d), a = e.tagName.toLowerCase();
         switch (r = r || [], e.href ? (n = h, e.setAttribute("href", toAbsUrl(e.getAttribute("href"), s))) : e.src ? (n = l, 
         e.setAttribute("src", toAbsUrl(e.getAttribute("src"), s))) : "script" === a ? (n = l, 
@@ -434,37 +436,37 @@
          case "link":
           i = o === m ? c : f;
         }
-        o || (o = u._getResLoadMode(t, a, r[a])), n && i && o != k && n.push({
+        o || (o = u._getResLoadMode(t, a, r[a])), n && i && o != v && n.push({
           dom: e,
           pos: i,
-          ignoreRepeat: o == v || !o
+          ignoreRepeat: o == k || !o
         });
       }
       var a = d + "=ignore", p = "link[" + a + "],style[" + a + "],script[" + a + "]", y = "script,link,style";
       return o && (i.find(p).remove(), o.find(y).each(function(e, t) {
-        ud(t, "head", {
+        vd(t, "head", {
           inlineScript: m,
-          script: v,
+          script: k,
           style: m,
-          link: v
+          link: k
         });
       })), i && (i.find(p).remove(), i.find(y).map(function(e, t) {
         var r = $(t);
-        0 < n.find(t).length ? ud(t, "container", {
+        0 < n.find(t).length ? vd(t, "container", {
           inlineScript: m,
           script: m,
           style: m,
           link: m
-        }) : r.parent().is(i) ? ud(t, "body", {
+        }) : r.parent().is(i) ? vd(t, "body", {
           inlineScript: m,
-          script: v,
-          style: m,
-          link: v
-        }) : ud(t, "other", {
-          inlineScript: k,
           script: k,
-          style: k,
+          style: m,
           link: k
+        }) : vd(t, "other", {
+          inlineScript: v,
+          script: v,
+          style: v,
+          link: v
         });
       }), n.find(y).remove(), n.remove()), {
         scripts: l,
@@ -472,18 +474,18 @@
         $dom: n
       };
     },
-    _addContent: function(e, t, r) {
-      var n = this;
+    _addContent: function(e, t, r, n) {
+      var i = this;
       if (e.$dom && 1 === e.$dom.length) {
-        n.$root.append(e.$dom);
-        var i = e.$dom, o = n.$root.find("[" + n.keyCurrent + "]"), a = $.Deferred(), s = $.Deferred();
+        i.$root.append(e.$dom);
+        var o = e.$dom, a = i.$root.find("[" + i.keyCurrent + "]"), s = $.Deferred(), c = $.Deferred();
         f.addLinks(e.links), f.addScripts(e.scripts, function() {
-          a.resolve();
-        }), $.when(a, s).always(function() {
-          n.fire(h, [ i ]), n.fire(y, [ i ]);
-        }), n.fire("dom:beforeshow", [ i ]), n.fire("dom:beforehide", [ o ]), n.clsCtrl.animate(t || "replace", o, i, function() {
-          n._setDomState(i, !0), n._setDomState(o, !1), n.fire("dom:show", [ i ]), n.fire("dom:hide", [ o ]), 
-          s.resolve(), r && r(o, i);
+          s.resolve();
+        }), $.when(s, c).always(function() {
+          i.fire(h, [ t, o ]), i.fire(y, [ t, o ]);
+        }), i.fire("dom:beforeshow", [ t, o ]), i.fire("dom:beforehide", [ t, a ]), i.clsCtrl.animate(r || "replace", a, o, function() {
+          i._setDomState(o, !0), i._setDomState(a, !1), i.fire("dom:show", [ t, o ]), i.fire("dom:hide", [ t, a ]), 
+          c.resolve(), n && n(a, o);
         });
       } else console.error("缺少 dom 元素");
     }

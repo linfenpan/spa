@@ -69,7 +69,7 @@ function Pjax($root, opts) {
     var $current = $root.find('[' + ctx.keyContainer+ ']');
     if (ctx.opts.fireInitEvent) {
       setTimeout(function() {
-        ctx.fire(EVENT_DOM_READY, [$current]);
+        ctx.fire(EVENT_DOM_READY, [location.href, $current]);
       });
     }
   }
@@ -92,7 +92,8 @@ Pjax.prototype = $.extend({
     if (!history.state) {
       his.clear();
     }
-    his.replace(location.href);
+    var url = location.href;
+    his.replace(url);
 
     if ($current.length > 0) {
       var conf = his.current;
@@ -102,8 +103,8 @@ Pjax.prototype = $.extend({
       if (opts.fireInitEvent) {
         // 让事件有充分事件进行准备
         setTimeout(function() {
-          ctx.fire(EVENT_PJAX_RENDER, [$current]);
-          ctx.fire(EVENT_DOM_READY, [$current]);
+          ctx.fire(EVENT_PJAX_RENDER, [url, $current]);
+          ctx.fire(EVENT_DOM_READY, [url, $current]);
         });
       }
     }
@@ -170,7 +171,7 @@ Pjax.prototype = $.extend({
       var mode = conf.isBack ? 'back' : 'forward';
       var $dom = ctx.$root.find('[' + ctx.keyId + '=' + conf.to.id + ']');
       if ($dom.length > 0) {
-        ctx._addContent({ $dom: $dom }, mode);
+        ctx._addContent({ $dom: $dom }, url, mode);
       } else {
         ctx._load(url, mode, true);
       }
@@ -285,7 +286,7 @@ Pjax.prototype = $.extend({
         return;
       }
       
-      ctx._addContent(result, addMode, function($old, $now) {
+      ctx._addContent(result, url, addMode, function($old, $now) {
         ctx.lockAjax = false;
         runner.params($old, $now).run('dom', addMode);
       });
@@ -439,7 +440,7 @@ Pjax.prototype = $.extend({
     return { scripts: scripts, links: links, $dom: $dom };
   },
 
-  _addContent: function(result, addMode, callback) {
+  _addContent: function(result, url, addMode, callback) {
     var ctx = this;
     if (result.$dom && result.$dom.length === 1) {
       ctx.$root.append(result.$dom);
@@ -455,19 +456,19 @@ Pjax.prototype = $.extend({
       });
 
       $.when(defScript, defAnimate).always(function() {
-        ctx.fire(EVENT_PJAX_RENDER, [$show]);
-        ctx.fire(EVENT_DOM_READY, [$show]);
+        ctx.fire(EVENT_PJAX_RENDER, [url, $show]);
+        ctx.fire(EVENT_DOM_READY, [url, $show]);
       });
 
-      ctx.fire(EVENT_DOM_BEFORE_SHOW, [$show]);
-      ctx.fire(EVENT_DOM_BEFORE_HIDE, [$hide]);
+      ctx.fire(EVENT_DOM_BEFORE_SHOW, [url, $show]);
+      ctx.fire(EVENT_DOM_BEFORE_HIDE, [url, $hide]);
 
       ctx.clsCtrl.animate(addMode || 'replace', $hide, $show, function() {
         ctx._setDomState($show, true);
         ctx._setDomState($hide, false);
 
-        ctx.fire(EVENT_DOM_SHOW, [$show]);
-        ctx.fire(EVENT_DOM_HIDE, [$hide]);
+        ctx.fire(EVENT_DOM_SHOW, [url, $show]);
+        ctx.fire(EVENT_DOM_HIDE, [url, $hide]);
 
         defAnimate.resolve();
 
