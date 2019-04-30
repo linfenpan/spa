@@ -1,16 +1,23 @@
 /**
   @rely: jQuery
   @author: da宗熊
-  @version: 0.0.5
-  @lastModify: 2017/6/30
+  @version: 0.0.6
+  @lastModify: 2019/4/30
   @git: https://github.com/linfenpan/spa#readme
 */
-!function(e, t) {
-  "function" == typeof define ? define.amd ? define(t) : define.cmd && define(function(e, r, n) {
-    n.exports = t();
-  }) : e.Pjax = t();
+!function(e, n) {
+  "function" == typeof define ? define.amd ? define(n) : define.cmd && define(function(e, t, r) {
+    r.exports = n();
+  }) : e.Pjax = n();
 }(this, function() {
   "use strict";
+  var a = "popstate", s = "pushstate", o = "pushState" in history && !!window.sessionStorage;
+  if (window.sessionStorage) try {
+    var e = "__pajax";
+    sessionStorage.setItem(e, 1), sessionStorage.removeItem(e);
+  } catch (e) {
+    o = !1;
+  }
   function each(e, t) {
     for (var r in e) e.hasOwnProperty(r) && t.call(e, e[r], r);
     return e;
@@ -21,16 +28,125 @@
   function queryType(e) {
     return $.type(e);
   }
-  function toAbsUrl(e, r) {
-    if (t.isAbsolute(e)) return e;
-    var n = location.href;
-    return r = r || n, t.isAbsolute(r) || (r = toAbsUrl(r, n)), r = t.dir(r), t.join(r, e);
+  function toAbsUrl(e, t) {
+    if (c.isAbsolute(e)) return e;
+    var r = location.href;
+    return t = t || r, c.isAbsolute(t) || (t = toAbsUrl(t, r)), t = c.dir(t), c.join(t, e);
   }
   function removeUrlSeachAndHash(e) {
     return e.replace(/(\?|#).*$/, "");
   }
+  function l() {
+    this._ = $("<div></div>");
+  }
+  var c = {
+    normal: function(e) {
+      return e.replace(/\/\.\//g, "//").replace(/(^|[^:])\/{2,}/g, "$1/").replace(/[^/]*\/\.\.\/([^/]*)/g, "$1");
+    },
+    isAbsolute: function(e) {
+      return /((https?|ftp):)?\/\//.test(e);
+    },
+    join: function() {
+      var e = [].slice.call(arguments, 0), t = e.shift(), r = "/", n = !1, i = "/";
+      c.isAbsolute(t) && (r = /.*?:?\/\/[^/]+\/?/.exec(t)[0] + "/", n = /^.*?:?\/\/[^/]+\/?$/.test(t)), 
+      n && (i = r, t = r = "/");
+      for (var o = e.shift(); o; ) {
+        if (c.isAbsolute(o)) return t = o, e.unshift(t), c.join.apply(c, e);
+        t = /^\//.test(o) ? c.normal(r + "/" + o) : c.normal(c.dir(t) + "/" + o), o = e.shift();
+      }
+      return n ? c.normal(i + "./" + t) : t;
+    },
+    dir: function(e) {
+      return e = removeUrlSeachAndHash(e), c.isDir(e) ? c.normal(e) : c.normal(e.replace(/(.*\/).*$/, "$1"));
+    },
+    isDir: function(e) {
+      return e = c.normal(e), !/(?:[^/])\/[^/]+\.[^/]+$/.test(e);
+    },
+    root: function(e) {
+      var t = e.match(/.*:\/{2,}.*?(\/|$)/g);
+      return t ? t[0] : "";
+    },
+    ext: function(e) {
+      return (e = removeUrlSeachAndHash(e)).match(/\.([^.]*)$/)[1];
+    }
+  }, u = "_e_on_fn_";
+  l.prototype = {
+    on: function(e, t, r) {
+      var n = this, i = t[u] || function() {
+        var e = toArray(arguments);
+        return e.shift(), t.apply(n, e);
+      };
+      return n._[r ? "one" : "on"](e, i), n;
+    },
+    off: function(e, t) {
+      return this._.off(e, t && t[u] || t), this;
+    },
+    one: function(e, t) {
+      return this.on(e, t, !0);
+    },
+    fire: function() {
+      return this._.trigger.apply(this._, arguments), this;
+    }
+  };
+  var d = new l(), f = {
+    elHead: null,
+    map: {},
+    init: function() {
+      var n = this;
+      n.elHead = document.head || document.getElementsByTagName("head")[0], n.init = function() {}, 
+      $("script,link").each(function(e, t) {
+        var r = t.src || t.href;
+        n._setExist(r);
+      });
+    },
+    _setExist: function(e) {
+      e && (c.isAbsolute(e) || (e = toAbsUrl(e)), this.map[e] = 1);
+    },
+    _addResource: function(e, t, r, n) {
+      if (r = r || this.elHead, t) {
+        if (n = void 0 === n || n, t = toAbsUrl(t), n && this.map[t]) return;
+        r.appendChild(e), n && this._setExist(t);
+      } else r.appendChild(e);
+    },
+    addScripts: function(e, t) {
+      var a = this, s = [];
+      a.init(), each(e, function(e) {
+        var r = e.dom, t = e.pos, n = e.ignoreRepeat;
+        if (r) {
+          var i = document.createElement("script");
+          if (!r.src) return i.innerHTML = $(r).html(), void $.when.apply($, s.slice(0)).always(function() {
+            a._addResource(i, i.src, t, n);
+          });
+          if (each(r.attributes, function(e) {
+            var t = e.name || e.nodeName || e;
+            i.setAttribute(t, r.getAttribute(t));
+          }), !n || !a.map[r.src]) {
+            var o = $.Deferred();
+            i.addEventListener("load", o.resolve, !1), i.addEventListener("error", o.resolve, !1), 
+            s.push(o);
+          }
+          $.when.apply($, s.slice(0, -1)).always(function() {
+            a._addResource(i, i.src, t, n);
+          });
+        }
+      }), $.when.apply($, s.slice(0)).always(function() {
+        t && t();
+      });
+    },
+    addLinks: function(e) {
+      var r = this;
+      r.init(), each(e, function(e) {
+        var t = e.dom;
+        r._addResource(t, t.href, e.pos, e.ignoreRepeat);
+      });
+    }
+  };
+  $(function() {
+    f.init();
+  });
+  var n = sessionStorage, t = new Date() / 1;
   function getStateId() {
-    return a++;
+    return t++;
   }
   function HistoryController(e) {
     this.key = e, this.keyBack = e + "-back", this.keyForward = e + "-forward", this.current = null, 
@@ -41,201 +157,61 @@
     this.prevFn = null;
   }
   function Runner(e) {
-    var t = this;
-    t.map = {}, t.split = e || "-", t.args = [];
+    this.map = {}, this.split = e || "-", this.args = [];
   }
-  function Pjax(t, n) {
-    var i = this;
-    r.call(i), i.$root = t, i.opts = $.extend({
-      key: "pjax",
-      cache: !0,
-      animateTime: 300,
-      fireInitEvent: !0,
-      resourceLoadConfig: {
-        body: {},
-        head: {},
-        container: {},
-        other: {}
-      }
-    }, n || {});
-    var o = i.key = i.opts.key;
-    if (i.keyContainer = "data-" + o + "-container", i.keyResource = "data-" + o + "-res", 
-    i.keyCurrent = "data-" + o + "-current", i.keyId = "data-" + o + "-id", i.ajax = null, 
-    i.lockAjax = !1, e) i.init(), i.bindEvent(); else {
-      var a = t.find("[" + i.keyContainer + "]");
-      i.opts.fireInitEvent && setTimeout(function() {
-        i.fire(s, [ a ]);
-      });
-    }
-  }
-  var e = "pushState" in history && !!window.sessionStorage;
-  if (window.sessionStorage) try {
-    sessionStorage.setItem("__pajax", 1), sessionStorage.removeItem("__pajax");
-  } catch (t) {
-    e = !1;
-  }
-  var t = {
-    normal: function(e) {
-      return e.replace(/\/\.\//g, "//").replace(/(^|[^:])\/{2,}/g, "$1/").replace(/[^/]*\/\.\.\/([^/]*)/g, "$1");
-    },
-    isAbsolute: function(e) {
-      return /((https?|ftp):)?\/\//.test(e);
-    },
-    join: function() {
-      var e = [].slice.call(arguments, 0), r = e.shift(), n = "/", i = !1, o = "/";
-      t.isAbsolute(r) && (n = /.*?:?\/\/[^/]+\/?/.exec(r)[0] + "/", i = /^.*?:?\/\/[^/]+\/?$/.test(r)), 
-      i && (o = n, n = "/", r = "/");
-      for (var a = e.shift(); a; ) {
-        if (t.isAbsolute(a)) return r = a, e.unshift(r), t.join.apply(t, e);
-        r = /^\//.test(a) ? t.normal(n + "/" + a) : t.normal(t.dir(r) + "/" + a), a = e.shift();
-      }
-      return i ? t.normal(o + "./" + r) : r;
-    },
-    dir: function(e) {
-      return e = removeUrlSeachAndHash(e), t.isDir(e) ? t.normal(e) : t.normal(e.replace(/(.*\/).*$/, "$1"));
-    },
-    isDir: function(e) {
-      return e = t.normal(e), !/(?:[^/])\/[^/]+\.[^/]+$/.test(e);
-    },
-    root: function(e) {
-      var t = e.match(/.*:\/{2,}.*?(\/|$)/g);
-      return t ? t[0] : "";
-    },
-    ext: function(e) {
-      return (e = removeUrlSeachAndHash(e)).match(/\.([^.]*)$/)[1];
-    }
-  }, r = function() {
-    this._ = $("<div></div>");
-  };
-  r.prototype = {
-    on: function(e, t, r) {
-      var n = this, i = t._e_on_fn_ || function() {
-        var e = toArray(arguments);
-        return e.shift(), t.apply(n, e);
-      };
-      return n._[r ? "one" : "on"](e, i), n;
-    },
-    off: function(e, t) {
-      return this._.off(e, t ? t._e_on_fn_ || t : t), this;
-    },
-    one: function(e, t) {
-      return this.on(e, t, !0);
-    },
-    fire: function() {
-      return this._.trigger.apply(this._, arguments), this;
-    }
-  };
-  var n = new r(), i = {
-    elHead: null,
-    map: {},
-    init: function() {
-      var e = this;
-      e.elHead = document.head || document.getElementsByTagName("head")[0], e.init = function() {}, 
-      $("script,link").each(function(t, r) {
-        var n = r.src || r.href;
-        e._setExist(n);
-      });
-    },
-    _setExist: function(e) {
-      e && (t.isAbsolute(e) || (e = toAbsUrl(e)), this.map[e] = 1);
-    },
-    _addResource: function(e, t, r, n) {
-      var i = this;
-      if (r = r || i.elHead, t) {
-        if (n = void 0 === n || n, t = toAbsUrl(t), n && i.map[t]) return;
-        r.appendChild(e), n && i._setExist(t);
-      } else r.appendChild(e);
-    },
-    addScripts: function(e, t) {
-      var r = this, n = [];
-      r.init(), each(e, function(e) {
-        var t = e.dom, i = e.pos, o = e.ignoreRepeat;
-        if (t) {
-          var a = document.createElement("script");
-          if (!t.src) return a.innerHTML = $(t).html(), void $.when.apply($, n.slice(0)).always(function() {
-            r._addResource(a, a.src, i, o);
-          });
-          if (each(t.attributes, function(e) {
-            var r = e.name || e.nodeName || e;
-            a.setAttribute(r, t.getAttribute(r));
-          }), !o || !r.map[t.src]) {
-            var s = $.Deferred();
-            a.addEventListener("load", s.resolve, !1), a.addEventListener("error", s.resolve, !1), 
-            n.push(s);
-          }
-          $.when.apply($, n.slice(0, -1)).always(function() {
-            r._addResource(a, a.src, i, o);
-          });
-        }
-      }), $.when.apply($, n.slice(0)).always(function() {
-        t && t();
-      });
-    },
-    addLinks: function(e) {
-      var t = this;
-      t.init(), each(e, function(e) {
-        var r = e.dom;
-        t._addResource(r, r.href, e.pos, e.ignoreRepeat);
-      });
-    }
-  };
-  $(function() {
-    i.init();
-  });
-  var o = sessionStorage, a = new Date() / 1;
   HistoryController.prototype = {
     init: function() {
       if (!this.current) {
-        var e = JSON.parse(o.getItem(this.keyBack) || "[]");
+        var e = JSON.parse(n.getItem(this.keyBack) || "[]");
         this.current = e[e.length - 1];
       }
     },
     bindEvent: function() {
-      var e = this;
-      window.addEventListener("popstate", function(t) {
-        var r = t.state;
-        if (!r || !r.id) return !0;
-        e.onStateChange(r);
+      var r = this;
+      window.addEventListener("popstate", function(e) {
+        var t = e.state;
+        if (!t || !t.id) return !0;
+        r.onStateChange(t);
       });
     },
     clear: function() {
-      o.setItem(this.keyBack, "[]"), o.setItem(this.keyForward, "[]");
+      n.setItem(this.keyBack, "[]"), n.setItem(this.keyForward, "[]");
     },
     _getList: function(e) {
-      return JSON.parse(o.getItem(e) || "[]");
+      return JSON.parse(n.getItem(e) || "[]");
     },
     _setList: function(e, t) {
-      o.setItem(e, JSON.stringify(t || []));
+      n.setItem(e, JSON.stringify(t || []));
     },
     push: function(e, t) {
-      var r = this, i = r.current, o = $.extend({
+      var r = this, n = r.current, i = $.extend({
         key: r.key,
         id: getStateId(),
         url: e
       }, t || {});
-      history.pushState(o, "", e), r._push(o), n.fire("pushstate", [ {
+      history.pushState(i, "", e), r._push(i), d.fire(s, [ {
         key: r.key,
-        from: i,
-        to: o,
+        from: n,
+        to: i,
         back: r._getList(r.keyBack),
         forward: []
       } ]);
     },
     _push: function(e) {
       var t = this, r = t._getList(t.keyBack);
-      r.push(e), o.setItem(t.keyBack, JSON.stringify(r)), t._setList(t.keyForward, []), 
+      r.push(e), n.setItem(t.keyBack, JSON.stringify(r)), t._setList(t.keyForward, []), 
       t.current = e;
     },
     replace: function(e, t) {
-      var r = this, i = r.current, o = $.extend({
+      var r = this, n = r.current, i = $.extend({
         key: r.key,
         id: getStateId(),
         url: e
       }, t || {});
-      history.replaceState(o, "", e), this._replace(o), n.fire("replacestate", [ {
+      history.replaceState(i, "", e), this._replace(i), d.fire("replacestate", [ {
         key: r.key,
-        from: i,
-        to: o,
+        from: n,
+        to: i,
         back: r._getList(r.keyBack),
         forward: r._getList(r.keyForward)
       } ]);
@@ -257,10 +233,10 @@
       r.push(e), t._setList(t.keyBack, r), (r = t._getList(t.keyForward)).shift(), t._setList(t.keyForward, r);
     },
     onStateChange: function(e) {
-      var t = this, r = !1, i = t.current;
-      i && i.id !== e.id && (i.id > e.id ? (r = !0, t._back(e)) : t._forward(e)), n.fire("popstate", [ {
+      var t = this, r = !1, n = t.current;
+      n && n.id !== e.id && (n.id > e.id ? (r = !0, t._back(e)) : t._forward(e)), d.fire(a, [ {
         key: t.key,
-        from: i,
+        from: n,
         to: e,
         isBack: r,
         back: t._getList(t.keyBack),
@@ -299,40 +275,63 @@
     add: function() {
       var e = toArray(arguments), t = e.pop();
       if ("function" == queryType(t)) {
-        var r = this;
-        return r.map[e.join(r.split)] = t, r;
+        return this.map[e.join(this.split)] = t, this;
       }
     },
     run: function() {
-      var e = this, t = toArray(arguments), r = e.map[t.join(e.split)];
-      return r && r.apply(null, e.args), e;
+      var e = toArray(arguments), t = this.map[e.join(this.split)];
+      return t && t.apply(null, this.args), this;
     }
   };
-  var s = "dom:ready", c = "dom:destroy";
+  var h = "pjax:render", p = "pjax:parseerror", y = "dom:ready", m = "repeat", k = "ignore", v = "once", g = "inlineScript";
+  function Pjax(e, t) {
+    var r = this;
+    l.call(r), r.$root = e, r.opts = $.extend({
+      key: "pjax",
+      cache: !0,
+      animateTime: 300,
+      fireInitEvent: !0,
+      resourceLoadConfig: {
+        body: {},
+        head: {},
+        container: {},
+        other: {}
+      }
+    }, t || {});
+    var n = r.key = r.opts.key;
+    if (r.keyContainer = "data-" + n + "-container", r.keyResource = "data-" + n + "-res", 
+    r.keyCurrent = "data-" + n + "-current", r.keyId = "data-" + n + "-id", r.ajax = null, 
+    r.lockAjax = !1, o) r.init(), r.bindEvent(); else {
+      var i = e.find("[" + r.keyContainer + "]");
+      r.opts.fireInitEvent && setTimeout(function() {
+        r.fire(y, [ i ]);
+      });
+    }
+  }
   return Pjax.prototype = $.extend({
     init: function() {
       var e = this, t = this.$root, r = this.opts, n = t.find("[" + e.keyContainer + "]");
-      if (n.length > 1) throw "[" + e.keyContainer + "] 元素，同一个页面，不能有多个";
+      if (1 < n.length) throw "[" + e.keyContainer + "] 元素，同一个页面，不能有多个";
       var i = e.history = new HistoryController(e.key);
-      if (history.state || i.clear(), i.replace(location.href), n.length > 0) {
+      if (history.state || i.clear(), i.replace(location.href), 0 < n.length) {
         var o = i.current;
         e._setDomIdByConf(n, o), e._setDomState(n, !0), r.fireInitEvent && setTimeout(function() {
-          e.fire("pjax:render", [ n ]), e.fire(s, [ n ]);
+          e.fire(h, [ n ]), e.fire(y, [ n ]);
         });
       }
       e.clsCtrl = new StateClsCtrl(e.key, r.animateTime), e.stateRunner = new Runner(), 
       e.initRunner();
     },
     initRunner: function() {
-      var e = this, t = e.stateRunner, r = "history";
-      t.add(r, "push", function(t) {
-        e.history.push(t);
-      }), t.add(r, "replace", function(t) {
-        e.history.replace(t);
-      }), r = "dom", t.add(r, "push", function(t, r) {
-        e._setDomIdByConf(r, e.history.current);
-      }), t.add(r, "replace", function(t, r) {
-        e.fire("dom:destroy", [ t ]), t.remove(), e._setDomIdByConf(r, e.history.current);
+      var r = this, e = r.stateRunner, t = "history";
+      e.add(t, "push", function(e) {
+        r.history.push(e);
+      }), e.add(t, "replace", function(e) {
+        r.history.replace(e);
+      }), t = "dom", e.add(t, "push", function(e, t) {
+        r._setDomIdByConf(t, r.history.current);
+      }), e.add(t, "replace", function(e, t) {
+        r.fire("dom:destroy", [ e ]), e.remove(), r._setDomIdByConf(t, r.history.current);
       });
     },
     _setDomIdByConf: function(e, t) {
@@ -342,27 +341,27 @@
       t ? e.attr(this.keyCurrent, !0) : e.removeAttr(this.keyCurrent);
     },
     bindEvent: function() {
-      function clearHistory(t) {
-        var r = {};
-        each([].concat(t.back || [], t.forward || []), function(e) {
-          r[e.id] = 1;
-        }), e.$root.find("[" + e.keyId + "]").each(function(t, n) {
-          var i = $(n), o = i.attr(e.keyId);
-          r[o] || setTimeout(function() {
-            e.fire(c, [ i ]), i.remove();
-          }, e.opts.animateTime);
+      var o = this, i = o.opts.key;
+      function clearHistory(e) {
+        var t = [].concat(e.back || [], e.forward || []), i = {};
+        each(t, function(e) {
+          i[e.id] = 1;
+        }), o.$root.find("[" + o.keyId + "]").each(function(e, t) {
+          var r = $(t), n = r.attr(o.keyId);
+          i[n] || setTimeout(function() {
+            o.fire("dom:destroy", [ r ]), r.remove();
+          }, o.opts.animateTime);
         });
       }
-      var e = this, t = e.opts.key;
-      n.on("pushstate", function(e) {
-        e && e.key == t && clearHistory(e);
-      }), n.on("popstate", function(r) {
-        if (r && r.key == t && r.to) {
-          clearHistory(r);
-          var n = r.to.url, i = r.isBack ? "back" : "forward", o = e.$root.find("[" + e.keyId + "=" + r.to.id + "]");
-          o.length > 0 ? e._addContent({
-            $dom: o
-          }, i) : e._load(n, i, !0);
+      d.on(s, function(e) {
+        e && e.key == i && clearHistory(e);
+      }), d.on(a, function(e) {
+        if (e && e.key == i && e.to) {
+          clearHistory(e);
+          var t = e.to.url, r = e.isBack ? "back" : "forward", n = o.$root.find("[" + o.keyId + "=" + e.to.id + "]");
+          0 < n.length ? o._addContent({
+            $dom: n
+          }, r) : o._load(t, r, !0);
         }
       });
     },
@@ -372,14 +371,14 @@
     forward: function(e) {
       history.forward();
     },
-    push: function(t, r) {
-      e ? this._load(t, "push", !1, r) : location.href = t;
+    push: function(e, t) {
+      o ? this._load(e, "push", !1, t) : location.href = e;
     },
-    replace: function(t, r) {
-      e ? this._load(t, "replace", !1, r) : location.replace(t);
+    replace: function(e, t) {
+      o ? this._load(e, "replace", !1, t) : location.replace(e);
     },
-    reload: function(t, r) {
-      "boolean" == typeof t && (r = t, t = void 0), e ? this._load(t || location.href, "replace", !0, r) : location.reload();
+    reload: function(e, t) {
+      "boolean" == typeof e && (t = e, e = void 0), o ? this._load(e || location.href, "replace", !0, t) : location.reload();
     },
     _load: function(e, t, r, n) {
       var i = this;
@@ -399,96 +398,96 @@
         i.fire("pjax:failure", [ o ].concat(toArray(arguments)));
       }), i.ajax;
     },
-    handlerSuccess: function(e, t, r) {
-      var n = this;
-      n.lockAjax = !0;
+    handlerSuccess: function(t, r, n) {
+      var i = this;
+      i.lockAjax = !0;
       try {
-        var i = n._analysisiHtml(r, e);
-        if (!i.$dom || i.$dom.length <= 0) return n.lockAjax = !1, void n.fire("pjax:parseerror", [ e, r ]);
-        var o = n.stateRunner;
-        o.params(e).run("history", t), n._addContent(i, t, function(e, r) {
-          n.lockAjax = !1, o.params(e, r).run("dom", t);
+        var o = i.stateRunner;
+        o.params(t).run("history", r);
+        var e = i._analysisiHtml(n, t);
+        if (!e.$dom || e.$dom.length <= 0) return i.lockAjax = !1, void i.fire(p, [ t, n, r ]);
+        i._addContent(e, r, function(e, t) {
+          i.lockAjax = !1, o.params(e, t).run("dom", r);
         });
-      } catch (t) {
-        n.lockAjax = !1, n.fire("pjax:parseerror", [ e, r ]);
+      } catch (e) {
+        i.lockAjax = !1, i.fire(p, [ t, n, r ]);
       }
     },
     _getResLoadMode: function(e, t, r) {
       return ((this.opts.resourceLoadConfig || {})[e] || {})[t] || r;
     },
-    _analysisiHtml: function(e, t) {
-      var r, n = this, i = n.keyResource, o = document.head || document.getElementsByTagName("head")[0], a = e.match(/<body[^>]*>([\s\S.]*)<\/body>/), s = e.match(/<head[^>]*>([\s\S.]*)<\/head>/), c = [], u = [], d = null, f = null, l = null;
-      a && (f = $("<div>" + a[1] + "</div>"), d = f.find("[" + n.keyContainer + "]"), 
-      r = d[0]), s && (l = $("<div>" + s[1] + "</head>"));
-      var h = i + "=ignore", p = "link[" + h + "],style[" + h + "],script[" + h + "]", y = function(e, a, s) {
-        var d, f = e.getAttribute(i), l = e.tagName.toLowerCase();
-        s = s || [], e.href ? (d = u, e.setAttribute("href", toAbsUrl(e.getAttribute("href"), t))) : e.src ? (d = c, 
-        e.setAttribute("src", toAbsUrl(e.getAttribute("src"), t))) : "script" === l ? (d = c, 
-        l = "inlineScript") : d = u;
-        var h;
-        switch (l) {
-         case "inlineScript":
+    _analysisiHtml: function(e, s) {
+      var c, u = this, d = u.keyResource, f = document.head || document.getElementsByTagName("head")[0], t = e.match(/<body[^>]*>([\s\S.]*)<\/body>/), r = e.match(/<head[^>]*>([\s\S.]*)<\/head>/), l = [], h = [], n = null, i = null, o = null;
+      t && (i = $("<div>" + t[1] + "</div>"), n = i.find("[" + u.keyContainer + "]"), 
+      c = n[0]), r && (o = $("<div>" + r[1] + "</head>"));
+      function ud(e, t, r) {
+        var n, i, o = e.getAttribute(d), a = e.tagName.toLowerCase();
+        switch (r = r || [], e.href ? (n = h, e.setAttribute("href", toAbsUrl(e.getAttribute("href"), s))) : e.src ? (n = l, 
+        e.setAttribute("src", toAbsUrl(e.getAttribute("src"), s))) : "script" === a ? (n = l, 
+        a = g) : n = h, a) {
+         case g:
          case "style":
-          h = r;
+          i = c;
           break;
 
          case "script":
          case "link":
-          h = "repeat" === f ? r : o;
+          i = o === m ? c : f;
         }
-        f || (f = n._getResLoadMode(a, l, s[l])), d && h && "ignore" != f && d.push({
+        o || (o = u._getResLoadMode(t, a, r[a])), n && i && o != k && n.push({
           dom: e,
-          pos: h,
-          ignoreRepeat: "once" == f || !f
+          pos: i,
+          ignoreRepeat: o == v || !o
         });
-      };
-      return l && (f.find(p).remove(), l.find("script,link,style").each(function(e, t) {
-        y(t, "head", {
-          inlineScript: "repeat",
-          script: "once",
-          style: "repeat",
-          link: "once"
+      }
+      var a = d + "=ignore", p = "link[" + a + "],style[" + a + "],script[" + a + "]", y = "script,link,style";
+      return o && (i.find(p).remove(), o.find(y).each(function(e, t) {
+        ud(t, "head", {
+          inlineScript: m,
+          script: v,
+          style: m,
+          link: v
         });
-      })), f && (f.find(p).remove(), f.find("script,link,style").map(function(e, t) {
+      })), i && (i.find(p).remove(), i.find(y).map(function(e, t) {
         var r = $(t);
-        d.find(t).length > 0 ? y(t, "container", {
-          inlineScript: "repeat",
-          script: "repeat",
-          style: "repeat",
-          link: "repeat"
-        }) : r.parent().is(f) ? y(t, "body", {
-          inlineScript: "repeat",
-          script: "once",
-          style: "repeat",
-          link: "once"
-        }) : y(t, "other", {
-          inlineScript: "ignore",
-          script: "ignore",
-          style: "ignore",
-          link: "ignore"
+        0 < n.find(t).length ? ud(t, "container", {
+          inlineScript: m,
+          script: m,
+          style: m,
+          link: m
+        }) : r.parent().is(i) ? ud(t, "body", {
+          inlineScript: m,
+          script: v,
+          style: m,
+          link: v
+        }) : ud(t, "other", {
+          inlineScript: k,
+          script: k,
+          style: k,
+          link: k
         });
-      }), d.find("script,link,style").remove(), d.remove()), {
-        scripts: c,
-        links: u,
-        $dom: d
+      }), n.find(y).remove(), n.remove()), {
+        scripts: l,
+        links: h,
+        $dom: n
       };
     },
     _addContent: function(e, t, r) {
       var n = this;
       if (e.$dom && 1 === e.$dom.length) {
         n.$root.append(e.$dom);
-        var o = e.$dom, a = n.$root.find("[" + n.keyCurrent + "]"), c = $.Deferred(), u = $.Deferred();
-        i.addLinks(e.links), i.addScripts(e.scripts, function() {
-          c.resolve();
-        }), $.when(c, u).always(function() {
-          n.fire("pjax:render", [ o ]), n.fire(s, [ o ]);
-        }), n.fire("dom:beforeshow", [ o ]), n.fire("dom:beforehide", [ a ]), n.clsCtrl.animate(t || "replace", a, o, function() {
-          n._setDomState(o, !0), n._setDomState(a, !1), n.fire("dom:show", [ o ]), n.fire("dom:hide", [ a ]), 
-          u.resolve(), r && r(a, o);
+        var i = e.$dom, o = n.$root.find("[" + n.keyCurrent + "]"), a = $.Deferred(), s = $.Deferred();
+        f.addLinks(e.links), f.addScripts(e.scripts, function() {
+          a.resolve();
+        }), $.when(a, s).always(function() {
+          n.fire(h, [ i ]), n.fire(y, [ i ]);
+        }), n.fire("dom:beforeshow", [ i ]), n.fire("dom:beforehide", [ o ]), n.clsCtrl.animate(t || "replace", o, i, function() {
+          n._setDomState(i, !0), n._setDomState(o, !1), n.fire("dom:show", [ i ]), n.fire("dom:hide", [ o ]), 
+          s.resolve(), r && r(o, i);
         });
       } else console.error("缺少 dom 元素");
     }
-  }, r.prototype), $.pjax = function(e, t) {
+  }, l.prototype), $.pjax = function(e, t) {
     return new Pjax(e, t);
-  }, $.pjax.support = e, Pjax;
+  }, $.pjax.support = o, Pjax;
 });

@@ -275,22 +275,23 @@ Pjax.prototype = $.extend({
     // 动画执行，是耗费时间的，这时候，如果被人点击了~，就会插入多个元素
     ctx.lockAjax = true;
     try {
+      var runner = ctx.stateRunner;
+      runner.params(url).run('history', addMode);
+
       var result = ctx._analysisiHtml(html, url);
       if (!result.$dom || result.$dom.length <= 0) {
         ctx.lockAjax = false;
-        ctx.fire(EVENT_PARSE_ERROR, [url, html]);
+        ctx.fire(EVENT_PARSE_ERROR, [url, html, addMode]);
         return;
       }
-
-      var runner = ctx.stateRunner;
-      runner.params(url).run('history', addMode);
+      
       ctx._addContent(result, addMode, function($old, $now) {
         ctx.lockAjax = false;
         runner.params($old, $now).run('dom', addMode);
       });
     } catch (e) {
       ctx.lockAjax = false;
-      ctx.fire(EVENT_PARSE_ERROR, [url, html]);
+      ctx.fire(EVENT_PARSE_ERROR, [url, html, addMode]);
     }
   },
 
